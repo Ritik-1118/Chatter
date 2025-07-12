@@ -1,5 +1,5 @@
 // export const HOST = "http://localhost:8000";
-export const HOST = "https://bchatapp-jt0i.onrender.com";
+export const HOST = "https://chatter-zdsf.onrender.com";
 const AUTH_ROUTE = `${HOST}/api/auth`;
 const MESSAGES_ROUTE = `${HOST}/api/messages`;
 
