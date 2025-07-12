@@ -1,0 +1,35 @@
+//prisma setup
+// First need to run => npx prisma init   //For initlising prisma -> It will generate a .env file and a prisma schema folder in root of dir
+// Then run =>  npx prisma generate      // To generate prisma client
+// Then replace the url in .env file with your DATABASE_URL
+// npx prisma studio      //For starting prisma studio
+
+generator client {
+    provider = "prisma-client-js"
+}
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id Int @id @default(autoincrement())
+    email String @unique
+    name String
+    profilePicture String @default("")
+    about String @default("")
+    sentMessages Messages[] @relation("sentMessages")
+    recievedMessages Messages[] @relation("recievedMessages")
+}
+
+model Messages {
+    id Int @id @default(autoincrement())
+    sender User @relation("sentMessages",fields:[senderId],references:[id])
+    senderId Int
+    reciever User @relation("recievedMessages",fields:[recieverId],references:[id])
+    recieverId Int
+    type String @default("text")
+    message String
+    messageStatus String @default("text")
+    createdAt DateTime @default(now())
+}
