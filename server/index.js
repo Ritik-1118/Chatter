@@ -24,12 +24,17 @@ connectDb();
 const server = app.listen(port,()=>{
     console.log(`Server is running on PORT:${port}`);
 }) 
-const io = new Server(server,{
-    cors:{
-        // origin: "http://localhost:3000",
-        // origin: "chatapp-2qy43mk01-ritik-1118.vercel.app",
-        origin:"*",
-    },
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:3000",
+      "https://chatter-web.vercel.app",
+      "https://chatapp-dun-nine.vercel.app",
+      "https://chatter-beta-two.vercel.app",
+      "https://chatter-0.vercel.app",
+    ],
+    methods: ["*"], // or ["GET", "POST"], more secure
+  },
 });
 
 global.onlineUsers = new Map();
