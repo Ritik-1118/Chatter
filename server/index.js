@@ -57,6 +57,7 @@ io.on("connection",(socket) =>{
 
     socket.on("send-msg", async (data) => {
         const sendUserSocket = onlineUsers.get(data.to);
+        console.log("Online users:", onlineUsers)
         if (sendUserSocket) {
             // Deliver the message to the recipient
             socket.to(sendUserSocket).emit("msg-recieve", {
@@ -132,5 +133,16 @@ io.on("connection",(socket) =>{
         const sendUserSocket = onlineUsers.get(id);
         socket.to(sendUserSocket).emit("accept-call");
     })
+
+    socket.on("disconnect", () => {
+        // Remove the user from onlineUsers when their socket disconnects
+        for (const [userId, socketId] of onlineUsers.entries()) {
+            if (socketId === socket.id) {
+                onlineUsers.delete(userId);
+                break;
+            }
+        }
+        // Optionally, broadcast updated online users
+    });
 
 });

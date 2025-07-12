@@ -10,7 +10,7 @@ import { useTheme } from '@/context/ThemeContext';
 function ChatContainer() {
     const [{messages,currentChatUser,userInfo, socket}] = useStateProvider();
     const { theme } = useTheme();
-
+    // console.log("currentChatUser:", currentChatUser)
     useEffect(() => {
         // Emit read receipt for all unread messages sent to this user
         if (socket && socket.current && currentChatUser && userInfo) {

@@ -69,6 +69,11 @@ function Main () {
 
   const [ socketEvent, setSocketEvent ] = useState( false );
   const socket = useRef();
+  const currentChatUserRef = useRef(currentChatUser);
+
+  useEffect(() => {
+    currentChatUserRef.current = currentChatUser;
+  }, [currentChatUser]);
 
   useEffect( () => {
     if ( redirectLogin ) router.push( "/login" );
@@ -105,12 +110,14 @@ function Main () {
   useEffect( () => {
     if ( socket.current && !socketEvent ) {
       socket.current.on( "msg-recieve", ( data ) => {
+        const chatUser = currentChatUserRef.current;
         // Only add to messages if the message is for the currently open chat
+        // console.log("Crrent Chat User:", chatUser, "Data: ", data)
         if (
-          (currentChatUser &&
-            (data.message.sender === currentChatUser._id || data.message.sender === currentChatUser.id)) ||
-          (currentChatUser &&
-            (data.message.reciever === currentChatUser._id || data.message.reciever === currentChatUser.id))
+          (chatUser &&
+            (data.message.sender === chatUser._id || data.message.sender === chatUser.id)) ||
+          (chatUser &&
+            (data.message.receiver === chatUser._id || data.message.receiver === chatUser.id))
         ) {
           dispatch( {
             type: reducerCases.ADD_MESSAGE,
@@ -119,7 +126,7 @@ function Main () {
             }
           } );
         } else {
-          // Update chat list preview for the sender (or reciever)
+          // Update chat list preview for the sender (or receiver)
           dispatch(prev => {
             const { userContacts } = prev;
             const contactIndex = userContacts.findIndex(
@@ -141,7 +148,7 @@ function Main () {
             return prev;
           });
           // Show a notification (for now, just log)
-          console.log("New message from:", data.message.sender, data.message.message);
+          // console.log("New message from:", data.message.sender, data.message.message);
         }
       });
 
@@ -209,6 +216,16 @@ function Main () {
       getMessages();
     }
   }, [ currentChatUser ] )
+
+  useEffect(() => {
+    if (socket.current) {
+      socket.current.on("reconnect", () => {
+        if (userInfo) {
+          socket.current.emit("add-user", userInfo.id);
+        }
+      });
+    }
+  }, [userInfo, socket.current]);
 
   return (
     <>

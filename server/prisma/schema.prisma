@@ -26,7 +26,7 @@ model Messages {
     id Int @id @default(autoincrement())
     sender User @relation("sentMessages",fields:[senderId],references:[id])
     senderId Int
-    reciever User @relation("recievedMessages",fields:[recieverId],references:[id])
+    receiver User @relation("recievedMessages",fields:[recieverId],references:[id])
     recieverId Int
     type String @default("text")
     message String
