@@ -7,6 +7,7 @@ const SettingModal = ({ onClose }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [cameraGranted, setCameraGranted] = useState(false);
   const [microphoneGranted, setMicrophoneGranted] = useState(false);
+  const [enterToSend, setEnterToSend] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -22,6 +23,8 @@ const SettingModal = ({ onClose }) => {
         result.onchange = () => setMicrophoneGranted(result.state === 'granted');
       }).catch(() => {});
     }
+    const saved = localStorage.getItem('enterToSend');
+    if (saved !== null) setEnterToSend(saved === 'true');
   }, []);
 
   const handleNotificationToggle = async () => {
@@ -56,6 +59,15 @@ const SettingModal = ({ onClose }) => {
       } catch {
         setMicrophoneGranted(false);
       }
+    }
+  };
+
+  const handleEnterToSendToggle = () => {
+    const newValue = !enterToSend;
+    setEnterToSend(newValue);
+    localStorage.setItem('enterToSend', newValue);
+    if (typeof onEnterToSendChange === 'function') {
+      onEnterToSendChange(newValue);
     }
   };
 
@@ -128,6 +140,22 @@ const SettingModal = ({ onClose }) => {
               <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${microphoneGranted ? 'bg-green-500' : 'bg-gray-300'} peer-focus:outline-none`}></div>
               <div className={`absolute left-0 top-0 h-6 w-11 pointer-events-none`}>
                 <span className={`absolute top-1/2 left-1 transition-transform duration-200 transform -translate-y-1/2 bg-white w-5 h-5 rounded-full shadow ${microphoneGranted ? 'translate-x-5' : ''}`}></span>
+              </div>
+            </label>
+          </div>
+          {/* Enter to Send Toggle */}
+          <div className="flex gap-4 items-center justify-between w-full">
+            <span>Send on Enter</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={enterToSend}
+                onChange={handleEnterToSendToggle}
+              />
+              <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${enterToSend ? 'bg-green-500' : 'bg-gray-300'} peer-focus:outline-none`}></div>
+              <div className={`absolute left-0 top-0 h-6 w-11 pointer-events-none`}>
+                <span className={`absolute top-1/2 left-1 transition-transform duration-200 transform -translate-y-1/2 bg-white w-5 h-5 rounded-full shadow ${enterToSend ? 'translate-x-5' : ''}`}></span>
               </div>
             </label>
           </div>

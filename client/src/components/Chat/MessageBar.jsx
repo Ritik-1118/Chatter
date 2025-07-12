@@ -24,6 +24,22 @@ function MessageBar () {
   const [ grabPhoto, setGrabPhoto ] = useState( false );
   const [ showAudioRecorder, setShowAudioRecorder ] = useState( false );
   const { theme } = useTheme();
+  const [enterToSend, setEnterToSend] = useState(false);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('enterToSend');
+    if (saved !== null) setEnterToSend(saved === 'true');
+  }, []);
+
+  const handleInputKeyDown = (e) => {
+    if (enterToSend && e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (message.trim().length > 0) {
+        sendMessage();
+      }
+    }
+  };
 
   const PhotoPickerChange = async ( e ) => {
     try {
@@ -125,6 +141,9 @@ function MessageBar () {
       // --- END NEW ---
 
       setMessage( "" );
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '40px';
+      }
     } catch ( error ) {
       console.log( error )
     }
@@ -152,9 +171,20 @@ function MessageBar () {
             <ImAttachment className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } title="Attach files" onClick={ () => setGrabPhoto( true ) } />
           </div>
           <div className=" w-full rounded-lg h-10 flex items-center">
-            <input type="text" placeholder="Type a message" className={ `text-sm focus:outline-none h-10 rounded-lg px-5 py-4 w-full ${theme === 'dark' ? 'bg-dark-surface text-dark-primary-text' : 'bg-light-surface text-light-primary-text'}` }
-              onChange={ ( e ) => setMessage( e.target.value ) }
+            <textarea
+              ref={textareaRef}
+              placeholder="Type a message"
+              className={`text-sm focus:outline-none rounded-lg px-5 py-2 w-full resize-none ${theme === 'dark' ? 'bg-dark-surface text-dark-primary-text' : 'bg-light-surface text-light-primary-text'}`}
+              style={{ minHeight: '40px', maxHeight: '120px', lineHeight: '1.5', overflowY: 'hidden', boxSizing: 'border-box' }}
+              onChange={ ( e ) => {
+                setMessage( e.target.value );
+                // Auto-expand textarea
+                e.target.style.height = '40px';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              } }
               value={ message }
+              onKeyDown={handleInputKeyDown}
+              rows={1}
             />
           </div>
           <div className=" flex w-10 items-center justify-center">
