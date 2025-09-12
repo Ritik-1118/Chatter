@@ -7,6 +7,7 @@ Welcome to **Chatter**, a modern, full-featured real-time chat application built
 ## 🚀 Features
 
 - **Real-Time Messaging:** Instant 1-on-1 chat with live updates.
+- **Group Chat:** Create and participate in group conversations.
 - **Voice & Video Calls:** High-quality voice and video calls powered by WebRTC.
 - **Media Sharing:** Send images, audio, emojies and more in your conversations.
 - **Online Presence:** See who’s online and available to chat.

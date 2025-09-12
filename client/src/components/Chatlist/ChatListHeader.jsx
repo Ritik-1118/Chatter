@@ -8,6 +8,8 @@ import ContextMenu from "../common/ContextMenu";
 import { useRouter } from "next/router";
 import { useTheme } from '@/context/ThemeContext';
 import { FiSun, FiMoon } from "react-icons/fi";
+import { FaUsers } from "react-icons/fa";
+import CreateGroupModal from "../common/CreateGroupModal";
 
 function ChatListHeader () {
   const [ { userInfo, smWindows }, dispatch ] = useStateProvider();
@@ -18,6 +20,7 @@ function ChatListHeader () {
     y: 0,
   } );
   const [ isContextMenuVisible, setIsContextMenuVisible ] = useState( false );
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const showContextMenu = ( e ) => {
     e.preventDefault();
     if(smWindows){
@@ -59,6 +62,11 @@ function ChatListHeader () {
         <TbMessagePlus className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` } title="New Chat"
           onClick={ handleAllContactsPage }
         />
+        <FaUsers
+          className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` }
+          title="New Group"
+          onClick={() => setShowCreateGroupModal(true)}
+        />
         <>
           <BsThreeDotsVertical
             className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } title="Menu"
@@ -74,6 +82,7 @@ function ChatListHeader () {
           ) }
         </>
       </div>
+      {showCreateGroupModal && <CreateGroupModal setShowCreateGroupModal={setShowCreateGroupModal} />}
     </div>
   )
 }

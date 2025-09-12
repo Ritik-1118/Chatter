@@ -7,7 +7,7 @@ import MessageStatus from "../common/MessageStatus";
 import { FaCamera, FaMicrophone } from "react-icons/fa";
 import { useTheme } from '@/context/ThemeContext';
 
-function ChatLIstItem ( { data, isContactPage = false } ) {
+function ChatLIstItem ( { data, isContactPage = false, isGroup = false } ) {
   // console.log("Data from ChatListItem: -----",data)
   const [ { messages, userInfo, currentChatUser, showSmChatList }, dispatch ] = useStateProvider();
   // console.log("data*****************",data)
@@ -18,19 +18,24 @@ function ChatLIstItem ( { data, isContactPage = false } ) {
       showSmChatList: false,
     } );
     if ( !isContactPage ) {
-      // console.log("data:::::::::::::::", data)
-      // console.log("User Info:::::::", userInfo)
-      dispatch( {
-        type: reducerCases.CHANGE_CURRENT_CHAT_USER,
-        user: {
-          name: data.name,
-          about: data.about,
-          profilePicture: data.profilePicture,
-          email: data.email,
-          _id: userInfo.id == data.sender ? data.receiver : data.sender,
-        },
-      } );
-      data.totalUnreadMessages = 0;
+      if (isGroup) {
+        dispatch({
+          type: reducerCases.CHANGE_CURRENT_CHAT_USER,
+          user: { ...data, isGroup: true },
+        });
+      } else {
+        dispatch( {
+          type: reducerCases.CHANGE_CURRENT_CHAT_USER,
+          user: {
+            name: data.name,
+            about: data.about,
+            profilePicture: data.profilePicture,
+            email: data.email,
+            _id: userInfo.id == data.sender ? data.receiver : data.sender,
+          },
+        } );
+        data.totalUnreadMessages = 0;
+      }
     } else {
       dispatch( { type: reducerCases.CHANGE_CURRENT_CHAT_USER, user: { ...data } } );
       dispatch( { type: reducerCases.SET_ALL_CONTACTS_PAGE } );

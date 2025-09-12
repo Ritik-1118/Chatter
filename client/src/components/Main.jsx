@@ -202,18 +202,38 @@ function Main () {
           onlineUsers,
         } )
       } )
+
+      socket.current.on("group-msg-recieve", (data) => {
+        const chatUser = currentChatUserRef.current;
+        if (chatUser && chatUser.isGroup && chatUser._id === data.group) {
+          dispatch({
+            type: reducerCases.ADD_GROUP_MESSAGE,
+            newMessage: {
+              ...data.message,
+            },
+          });
+        }
+      });
+
       setSocketEvent( true );
     }
   }, [ socket.current ] );
 
   useEffect( () => {
-    // console.log("currentChatUser::::::::::", currentChatUser);
     const getMessages = async () => {
       const { data: { messages }, } = await axios.get( `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser._id}` );
       dispatch( { type: reducerCases.SET_MESSAGES, messages } );
     }
+    const getGroupMessages = async () => {
+      const { data: { messages }, } = await axios.get( `${GET_GROUP_MESSAGES_ROUTE}/${currentChatUser._id}` );
+      dispatch( { type: reducerCases.SET_GROUP_MESSAGES, messages } );
+    }
     if ( currentChatUser?._id ) {
-      getMessages();
+      if (currentChatUser.isGroup) {
+        getGroupMessages();
+      } else {
+        getMessages();
+      }
     }
   }, [ currentChatUser ] )
 
