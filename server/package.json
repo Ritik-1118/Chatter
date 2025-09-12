@@ -1,19 +1,23 @@
 {
     "type": "module",
     "scripts": {
-        "start": "nodemon index.js"
+        "start": "nodemon index.js",
+        "test": "mocha test/socket.test.js"
     },
     "dependencies": {
         "@prisma/client": "^5.5.2",
+        "chai": "^6.0.1",
         "cors": "^2.8.5",
         "crypto": "^1.0.1",
         "dotenv": "^16.0.3",
         "express": "^4.18.2",
+        "mocha": "^11.7.2",
         "mongoose": "^8.1.2",
         "multer": "^1.4.5-lts.1",
         "node": "^21.1.0",
         "nodemon": "^3.0.1",
         "socket.io": "^4.6.1",
+        "socket.io-client": "^4.8.1",
         "zego-express-engine-webrtc": "^2.17.0"
     },
     "devDependencies": {

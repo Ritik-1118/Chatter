@@ -57,7 +57,6 @@ io.on("connection",(socket) =>{
 
     socket.on("send-msg", async (data) => {
         const sendUserSocket = onlineUsers.get(data.to);
-        console.log("Online users:", onlineUsers)
         if (sendUserSocket) {
             // Deliver the message to the recipient
             socket.to(sendUserSocket).emit("msg-recieve", {
@@ -66,7 +65,7 @@ io.on("connection",(socket) =>{
             });
             // Update message status to 'delivered' in DB and notify sender
             if (data.message && data.message._id) {
-                await Message.findByIdAndUpdate(data.message._id, { messageStatus: "delivered" });
+                // await Message.findByIdAndUpdate(data.message._id, { messageStatus: "delivered" });
                 // Notify sender in real time
                 const senderSocket = onlineUsers.get(data.from);
                 if (senderSocket) {
@@ -143,6 +142,9 @@ io.on("connection",(socket) =>{
             }
         }
         // Optionally, broadcast updated online users
+        socket.broadcast.emit("online-users",{
+            onlineUsers:Array.from(onlineUsers.keys()),
+        });
     });
 
 });
