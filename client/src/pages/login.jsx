@@ -3,7 +3,7 @@ import { reducerCases } from "@/context/constants";
 import { CHECK_USER_ROUTE } from "@/utils/ApiRoutes";
 import { firebaseAuth } from "@/utils/FirebaseConfig";
 import axios from "axios";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, getIdToken } from "firebase/auth";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
@@ -41,6 +41,10 @@ function login() {
     const profileImage = user.photoURL;
     try {
       if (email) {
+        try {
+          const token = await getIdToken(user, true);
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        } catch {}
         const { data } = await axios.post(CHECK_USER_ROUTE, { email });
         if (!data.status) {
           dispatch({ type: reducerCases.SET_NEW_USER, newUser: true });

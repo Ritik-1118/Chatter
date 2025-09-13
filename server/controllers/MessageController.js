@@ -1,6 +1,6 @@
 import Message from '../models/message-model.js'; 
 import User from "../models/user-model.js"; 
-import {renameSync} from 'fs';
+import mongoose from "mongoose";
 
 // import getPrismaInstance from "../utils/PrismaClient.js";
 
@@ -226,9 +226,20 @@ export const addMessage = async (req, res, next) => {
     try {
         console.log(req.body);
         const { message, from, to } = req.body;
+        // Authorization: enforce from === authenticated user
+        if (!req.user || !req.user.appUserId || (from && from !== req.user.appUserId)) {
+            return res.status(403).send("Forbidden");
+        }
+        const senderId = req.user.appUserId;
+        if (!to || !mongoose.Types.ObjectId.isValid(to)) {
+            return res.status(400).send("Invalid 'to' user id");
+        }
+        if (typeof message !== 'string' || !message.trim() || message.length > 4000) {
+            return res.status(400).send("Invalid message content");
+        }
         const getUser = onlineUsers.get(to);
-        if (message && from && to) {
-            const senderUser = await User.findById(from);
+        if (message && to) {
+            const senderUser = await User.findById(senderId);
             const receiverUser = await User.findById(to);
             if (!senderUser || !receiverUser) {
                 return res.status(404).send("Sender or receiver user not found.");
@@ -237,15 +248,15 @@ export const addMessage = async (req, res, next) => {
                 message,
                 sender: senderUser._id,
                 receiver: receiverUser._id,
-                messageStatus: getUser ? "Delivered" : "sent",
+                messageStatus: getUser ? "delivered" : "sent",
             });
-            await User.findByIdAndUpdate(from, { $push: { sentMessages: newMessage._id } });
+            await User.findByIdAndUpdate(senderId, { $push: { sentMessages: newMessage._id } });
             await User.findByIdAndUpdate(to, { $push: { receivedMessages: newMessage._id } });
             // console.log("New message created.");
             // console.log(newMessage)
             return res.status(201).send({ message: newMessage });
         }
-        return res.status(400).send("From, to, and message are required.");
+        return res.status(400).send("To and message are required.");
     } catch (error) {
         console.error(error);
         next(error);
@@ -254,6 +265,13 @@ export const addMessage = async (req, res, next) => {
 export const getMessages = async (req, res, next) => {
     try {
         const { from, to } = req.params;
+        // Only allow if requester is in the conversation
+        if (!req.user || !req.user.appUserId || (req.user.appUserId !== from && req.user.appUserId !== to)) {
+            return res.status(403).send("Forbidden");
+        }
+        if (!mongoose.Types.ObjectId.isValid(from) || !mongoose.Types.ObjectId.isValid(to)) {
+            return res.status(400).send("Invalid user id(s)");
+        }
         const messages = await Message.find({
             $or: [
                 { sender: from, receiver: to },
@@ -277,25 +295,27 @@ export const getMessages = async (req, res, next) => {
 export const addImageMessage = async (req, res, next) => {
     try {
         if (req.file) {
-            const date = Date.now();
-            const fileName = "uploads/images/" + date + req.file.originalname;
-            renameSync(req.file.path, fileName);
+            const fileName = req.file.path;
 
             const { from, to } = req.query;
+            if (!req.user || !req.user.appUserId || (from && from !== req.user.appUserId)) {
+                return res.status(403).send("Forbidden");
+            }
+            const senderId = req.user.appUserId;
             // console.log(from, to)
-            if (from && to) {
+            if (to && mongoose.Types.ObjectId.isValid(to)) {
                 const message = await Message.create({
                     message: fileName,
-                    sender: from,
+                    sender: senderId,
                     receiver: to,
                     type: "image",
                     messageStatus: "sent",
                 });
-                await User.findByIdAndUpdate(from, { $push: { sentMessages: message._id } });
+                await User.findByIdAndUpdate(senderId, { $push: { sentMessages: message._id } });
                 await User.findByIdAndUpdate(to, { $push: { receivedMessages: message._id } });
                 return res.status(201).json({ message });
             }
-            return res.status(400).send("From and To are required.");
+            return res.status(400).send("To is required.");
         }
         return res.status(400).send("Image is required.");
     } catch (error) {
@@ -305,24 +325,26 @@ export const addImageMessage = async (req, res, next) => {
 export const addAudioMessage = async (req, res, next) => {
     try {
         if (req.file) {
-            const date = Date.now();
-            const fileName = "uploads/recordings/" + date + req.file.originalname;
-            renameSync(req.file.path, fileName);
+            const fileName = req.file.path;
 
             const { from, to } = req.query;
-            if (from && to) {
+            if (!req.user || !req.user.appUserId || (from && from !== req.user.appUserId)) {
+                return res.status(403).send("Forbidden");
+            }
+            const senderId = req.user.appUserId;
+            if (to && mongoose.Types.ObjectId.isValid(to)) {
                 const message = await Message.create({
                     message: fileName,
-                    sender: from,
+                    sender: senderId,
                     receiver: to,
                     type: "audio",
                     messageStatus: "sent",
                 });
-                await User.findByIdAndUpdate(from, { $push: { sentMessages: message._id } });
+                await User.findByIdAndUpdate(senderId, { $push: { sentMessages: message._id } });
                 await User.findByIdAndUpdate(to, { $push: { receivedMessages: message._id } });
                 return res.status(201).json({ message });
             }
-            return res.status(400).send("From and To are required.");
+            return res.status(400).send("To is required.");
         }
         return res.status(400).send("Audio is required.");
     } catch (error) {
@@ -332,6 +354,12 @@ export const addAudioMessage = async (req, res, next) => {
 export const getInitialContactsWithMessages = async (req, res, next) => {
     try {
         const userId = req.params.from;
+        if (!req.user || !req.user.appUserId || req.user.appUserId !== userId) {
+            return res.status(403).send("Forbidden");
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).send("Invalid user id");
+        }
         // console.log("userId = ============",req.params)
         // console.log("userId = ============",req.params.from)
         const user = await User.findById(userId)
