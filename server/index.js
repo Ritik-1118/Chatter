@@ -4,20 +4,38 @@ import cors from "cors";
 import connectDb from "./utils/mongoDb.js"
 import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js"
+import verifyFirebaseToken from "./middlewares/AuthMiddleware.js";
 import { Server } from "socket.io";
 import Message from "./models/message-model.js";
+import admin from "./utils/firebaseAdmin.js";
 
 dotenv.config();
 const app = express()
 
-app.use(cors());
+const allowedOrigins = [
+    "http://localhost:3000",
+    "https://chatter-web.vercel.app",
+    "https://chatapp-dun-nine.vercel.app",
+    "https://chatter-beta-two.vercel.app",
+    "https://chatter-0.vercel.app",
+];
+
+app.use(cors({
+    origin: (origin, cb) => {
+        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST"],
+}));
 app.use(express.json());
 
 app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/images", express.static("uploads/images"));
 
-app.use("/api/auth", AuthRoutes);
-app.use("/api/messages",MessageRoutes);
+// Public health and static assets
+// Secure APIs with Firebase auth middleware
+app.use("/api/auth", verifyFirebaseToken, AuthRoutes);
+app.use("/api/messages", verifyFirebaseToken, MessageRoutes);
 
 const port = process.env.PORT || 8000;
 connectDb();
@@ -25,31 +43,44 @@ const server = app.listen(port,()=>{
     console.log(`Server is running on PORT:${port}`);
 }) 
 const io = new Server(server, {
-  cors: {
-    origin: [
-      "http://localhost:3000",
-      "https://chatter-web.vercel.app",
-      "https://chatapp-dun-nine.vercel.app",
-      "https://chatter-beta-two.vercel.app",
-      "https://chatter-0.vercel.app",
-    ],
-    methods: ["*"], // or ["GET", "POST"], more secure
-  },
-});
+    cors: {
+        origin: [
+            "http://localhost:3000",
+            "https://chatter-web.vercel.app",
+            "https://chatapp-dun-nine.vercel.app",
+            "https://chatter-beta-two.vercel.app",
+            "https://chatter-0.vercel.app",
+        ],
+        methods: ["GET", "POST"],
+    },
+}); 
 
 global.onlineUsers = new Map();
 
+// Authenticate socket connections using Firebase ID token passed in handshake auth
+io.use(async (socket, next) => {
+    try {
+        const token = socket.handshake?.auth?.token;
+        if (!token) return next(new Error("Unauthorized"));
+        const decoded = await admin.auth().verifyIdToken(token);
+        socket.userId = decoded.uid;
+        next();
+    } catch (err) {
+        next(new Error("Unauthorized"));
+    }
+});
+
 io.on("connection",(socket) =>{
     global.chatSocket = socket;
-    socket.on("add-user",(userId) =>{
-        onlineUsers.set(userId,socket.id);
+        socket.on("add-user",() =>{
+                onlineUsers.set(socket.userId,socket.id);
         socket.broadcast.emit("online-users",{
             onlineUsers:Array.from(onlineUsers.keys()),
         });
     });
 
-    socket.on("signout",(id)=>{
-        onlineUsers.delete(id);
+    socket.on("signout",()=>{
+        onlineUsers.delete(socket.userId);
         socket.broadcast.emit("online-users",{
             onlineUsers:Array.from(onlineUsers.keys()),
         });
@@ -60,14 +91,16 @@ io.on("connection",(socket) =>{
         if (sendUserSocket) {
             // Deliver the message to the recipient
             socket.to(sendUserSocket).emit("msg-recieve", {
-                from: data.from,
+                from: socket.userId,
                 message: data.message,
             });
             // Update message status to 'delivered' in DB and notify sender
             if (data.message && data.message._id) {
-                // await Message.findByIdAndUpdate(data.message._id, { messageStatus: "delivered" });
+                try {
+                  await Message.findOneAndUpdate({ _id: data.message._id, receiver: data.to }, { messageStatus: "delivered" });
+                } catch {}
                 // Notify sender in real time
-                const senderSocket = onlineUsers.get(data.from);
+                const senderSocket = onlineUsers.get(socket.userId);
                 if (senderSocket) {
                     io.to(senderSocket).emit("delivered", {
                         messageId: data.message._id,
@@ -82,7 +115,7 @@ io.on("connection",(socket) =>{
         // data: { messageIds: [id1, id2, ...], from, to }
         if (Array.isArray(data.messageIds)) {
             await Message.updateMany(
-                { _id: { $in: data.messageIds } },
+                { _id: { $in: data.messageIds }, receiver: socket.userId },
                 { messageStatus: "read" }
             );
             // Notify sender in real time
@@ -100,7 +133,7 @@ io.on("connection",(socket) =>{
         const sendUserSocket = onlineUsers.get(data.to);
         if(sendUserSocket){
             socket.to(sendUserSocket).emit("incoming-voice-call",{
-                from:data.from,
+                from:socket.userId,
                 roomId: data.roomId,
                 callType: data.callType,
             });
@@ -110,7 +143,7 @@ io.on("connection",(socket) =>{
         const sendUserSocket = onlineUsers.get(data.to);
         if(sendUserSocket){
             socket.to(sendUserSocket).emit("incoming-video-call",{
-                from:data.from,
+                from:socket.userId,
                 roomId: data.roomId,
                 callType: data.callType,
             });
@@ -148,3 +181,10 @@ io.on("connection",(socket) =>{
     });
 
 });
+
+    // Centralized error handler
+    // eslint-disable-next-line no-unused-vars
+    app.use((err, req, res, next) => {
+        console.error("Unhandled error:", err?.message || err);
+        res.status(500).json({ error: "Internal Server Error" });
+    });

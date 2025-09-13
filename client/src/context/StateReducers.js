@@ -47,7 +47,12 @@ const reducer = (state,action)=>{
             case reducerCases.SET_MESSAGES:
                 return {
                     ...state,
-                    messages: action.messages,
+                    messages: (action.messages || []).map(m => ({
+                        ...m,
+                        messageStatus: (m.messageStatus || "sent").toLowerCase(),
+                        sender: typeof m.sender === 'object' && m.sender?._id ? m.sender._id : m.sender,
+                        receiver: typeof m.receiver === 'object' && m.receiver?._id ? m.receiver._id : m.receiver,
+                    })),
                 };
             case reducerCases.SET_SOCKET:
                 return {
@@ -57,7 +62,12 @@ const reducer = (state,action)=>{
             case reducerCases.ADD_MESSAGE:
                 return {
                     ...state,
-                    messages:[...state.messages,action.newMessage],
+                    messages:[...state.messages,{
+                        ...action.newMessage,
+                        messageStatus: (action.newMessage?.messageStatus || "sent").toLowerCase(),
+                        sender: typeof action.newMessage.sender === 'object' && action.newMessage.sender?._id ? action.newMessage.sender._id : action.newMessage.sender,
+                        receiver: typeof action.newMessage.receiver === 'object' && action.newMessage.receiver?._id ? action.newMessage.receiver._id : action.newMessage.receiver,
+                    }],
                 };
             case reducerCases.SET_MESSAGE_SEARCH:
                 return {
@@ -67,7 +77,10 @@ const reducer = (state,action)=>{
             case reducerCases.SET_USER_CONTACTS:
                 return {
                     ...state,
-                    userContacts:action.userContacts,
+                    userContacts:(action.userContacts || []).map(c => ({
+                        id: c.id || c._id,
+                        ...c,
+                    })),
                 }
             case reducerCases.SET_ONLINE_USERS:
                 return {

@@ -99,6 +99,8 @@ export const checkUser = async (req, res, next) => {
                 status: false
             });
         }
+        // Optionally enforce that the requester is the same as email in Firebase token
+        // if (req.user?.email && req.user.email !== email) return res.status(403).send("Forbidden");
         const user = await User.findOne({ email });
         if (!user) {
             return res.json({
@@ -122,6 +124,9 @@ export const onBoardUser = async (req, res, next) => {
         if (!email || !name || !profilePicture) {
             return res.send("Email, Name, and Image are required.");
         }
+        if (req.user?.email && req.user.email !== email) {
+            return res.status(403).send("Forbidden");
+        }
         const user = await User.create({ email, name, about, profilePicture });
         return res.json({ msg: "Success", status: true, user });
     } catch (error) {
@@ -130,6 +135,7 @@ export const onBoardUser = async (req, res, next) => {
 };
 export const getAllUsers = async (req, res, next) => {
     try {
+        // Require auth; requester gets list of users
         const users = await User.find({})
             .sort({ name: "asc" })
             .select("id email name profilePicture about");
@@ -155,6 +161,9 @@ export const generateToken = async (req, res, next) => {
         const serverSecret = process.env.ZEGO_SERVER_ID;
         const effectiveTime = 3600;
         const payload = "";
+        if (!req.user || !req.user.appUserId || req.user.appUserId !== userId) {
+            return res.status(403).send("Forbidden");
+        }
         if (appId && serverSecret && userId) {
             const token = await generateToken04(appId, userId, serverSecret, effectiveTime, payload);
             return res.status(200).json({ token });

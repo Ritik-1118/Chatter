@@ -4,6 +4,7 @@ import Empty from "./Empty";
 import { onAuthStateChanged, updateCurrentUser } from "firebase/auth";
 import { firebaseAuth } from "@/utils/FirebaseConfig";
 import axios from "axios";
+import { getIdToken } from "firebase/auth";
 import { CHECK_USER_ROUTE, GET_MESSAGES_ROUTE, HOST } from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
 import { useStateProvider } from "@/context/StateContext";
@@ -82,6 +83,11 @@ function Main () {
   onAuthStateChanged( firebaseAuth, async ( currentUser ) => {
     if ( !currentUser ) setRedirectLogin( true );
     if ( !userInfo && currentUser?.email ) {
+      // Attach ID token to axios headers for subsequent requests
+      try {
+        const token = await getIdToken(currentUser, true);
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      } catch {}
       const { data } = await axios.post( CHECK_USER_ROUTE, { email: currentUser.email } );
       if ( !data.status ) {
         router.push( "/login" );
@@ -100,11 +106,15 @@ function Main () {
 
   // Setting socket when user add
   useEffect( () => {
-    if ( userInfo ) {
-      socket.current = io( HOST );
-      socket.current.emit( "add-user", userInfo.id );
-      dispatch( { type: reducerCases.SET_SOCKET, socket } );
-    }
+    const connectSocket = async () => {
+      if (userInfo && firebaseAuth.currentUser) {
+        const token = await firebaseAuth.currentUser.getIdToken(true);
+        socket.current = io(HOST, { auth: { token } });
+        socket.current.emit("add-user");
+        dispatch({ type: reducerCases.SET_SOCKET, socket });
+      }
+    };
+    connectSocket();
   }, [ userInfo ] );
 
   useEffect( () => {
@@ -221,7 +231,7 @@ function Main () {
     if (socket.current) {
       socket.current.on("reconnect", () => {
         if (userInfo) {
-          socket.current.emit("add-user", userInfo.id);
+          socket.current.emit("add-user");
         }
       });
     }
