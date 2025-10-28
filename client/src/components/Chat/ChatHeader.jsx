@@ -8,6 +8,8 @@ import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
 import ContextMenu from "../common/ContextMenu";
 import { useTheme } from '@/context/ThemeContext';
+import { FaUserPlus } from "react-icons/fa";
+import AddGroupMemberModal from "../common/AddGroupMemberModal";
 
 function ChatHeader() {
     const [{currentChatUser,onlineUsers},dispatch] = useStateProvider();
@@ -17,6 +19,7 @@ function ChatHeader() {
         y:0,
     });
     const [isContextMenuVisible,setIsContextMenuVisible]  = useState(false);
+    const [showAddGroupMemberModal, setShowAddGroupMemberModal] = useState(false);
     const showContextMenu = (e) => {
         e.preventDefault();
         setContextMenuCordinates({ x:e.pageX -50,y:e.pageY +20 });
@@ -62,6 +65,12 @@ function ChatHeader() {
                 </div>
             </div>
             <div className=" flex gap-6">
+                {currentChatUser.isGroup && (
+                    <FaUserPlus
+                        className={`cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}`}
+                        onClick={() => setShowAddGroupMemberModal(true)}
+                    />
+                )}
                 <MdCall className={`cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}`}
                     onClick={handleVoiceCall}
                 />
@@ -84,6 +93,7 @@ function ChatHeader() {
                     />
                 )}
             </div>
+            {showAddGroupMemberModal && <AddGroupMemberModal setShowAddGroupMemberModal={setShowAddGroupMemberModal} />}
         </div>
     )
 }

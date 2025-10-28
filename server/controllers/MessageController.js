@@ -1,6 +1,7 @@
-import Message from '../models/message-model.js'; 
-import User from "../models/user-model.js"; 
+import Message from '../models/message-model.js';
+import User from "../models/user-model.js";
 import {renameSync} from 'fs';
+import GroupMessage from "../models/group-message-model.js";
 
 // import getPrismaInstance from "../utils/PrismaClient.js";
 
@@ -248,6 +249,33 @@ export const addMessage = async (req, res, next) => {
         return res.status(400).send("From, to, and message are required.");
     } catch (error) {
         console.error(error);
+        next(error);
+    }
+};
+
+export const addGroupMessage = async (req, res, next) => {
+    try {
+        const { message, from, to } = req.body;
+        if (message && from && to) {
+            const newMessage = await GroupMessage.create({
+                message,
+                sender: from,
+                group: to,
+            });
+            return res.status(201).send({ message: newMessage });
+        }
+        return res.status(400).send("From, to, and message are required.");
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getGroupMessages = async (req, res, next) => {
+    try {
+        const { groupId } = req.params;
+        const messages = await GroupMessage.find({ group: groupId }).sort({ _id: "asc" });
+        res.status(200).json({ messages });
+    } catch (error) {
         next(error);
     }
 };

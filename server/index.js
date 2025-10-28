@@ -6,6 +6,7 @@ import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js"
 import { Server } from "socket.io";
 import Message from "./models/message-model.js";
+import Group from "./models/group-model.js";
 
 dotenv.config();
 const app = express()
@@ -18,6 +19,8 @@ app.use("/uploads/images", express.static("uploads/images"));
 
 app.use("/api/auth", AuthRoutes);
 app.use("/api/messages",MessageRoutes);
+import GroupRoutes from "./routes/GroupRoutes.js";
+app.use("/api/groups", GroupRoutes);
 
 const port = process.env.PORT || 8000;
 connectDb();
@@ -132,6 +135,22 @@ io.on("connection",(socket) =>{
         const sendUserSocket = onlineUsers.get(id);
         socket.to(sendUserSocket).emit("accept-call");
     })
+
+    socket.on("send-group-msg", async (data) => {
+        const group = await Group.findById(data.to);
+        if (group) {
+            group.members.forEach((member) => {
+                const memberSocket = onlineUsers.get(member.toString());
+                if (memberSocket && member.toString() !== data.from) {
+                    socket.to(memberSocket).emit("group-msg-recieve", {
+                        from: data.from,
+                        message: data.message,
+                        group: data.to,
+                    });
+                }
+            });
+        }
+    });
 
     socket.on("disconnect", () => {
         // Remove the user from onlineUsers when their socket disconnects

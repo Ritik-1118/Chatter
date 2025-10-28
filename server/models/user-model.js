@@ -6,7 +6,8 @@ const userSchema = new mongoose.Schema({
     profilePicture: { type: String, default: "" },
     about: { type: String, default: "" },
     sentMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }],
-    receivedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }]
+    receivedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }],
+    groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }]
 },{ timestamps: true });
 
 const User = mongoose.model('User', userSchema);

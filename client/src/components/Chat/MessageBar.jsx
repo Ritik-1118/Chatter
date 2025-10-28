@@ -98,54 +98,68 @@ function MessageBar () {
 
   const sendMessage = async () => {
     try {
-      // console.log("CurrentUser:- ",currentChatUser);
-      // console.log("userInfo:- ",userInfo);
-      // console.log("Message =",message);
-      const { data } = await axios.post( ADD_MESSAGE_ROUTE, {
-        to: currentChatUser?._id,
-        from: userInfo?.id,
-        message,
-      } );
-      // console.log("response ######################",{data})
-      socket.current.emit( "send-msg", {
-        to: currentChatUser?._id,
-        from: userInfo?.id,
-        message: data.message,
-      } );
-      dispatch( {
-        type: reducerCases.ADD_MESSAGE,
-        newMessage: {
-          ...data.message,
-          messageStatus: "sent",
-        },
-        fromSelf: true,
-      } );
+      if (currentChatUser.isGroup) {
+        const { data } = await axios.post(ADD_GROUP_MESSAGE_ROUTE, {
+          to: currentChatUser?._id,
+          from: userInfo?.id,
+          message,
+        });
+        socket.current.emit("send-group-msg", {
+          to: currentChatUser?._id,
+          from: userInfo?.id,
+          message: data.message,
+        });
+        dispatch({
+          type: reducerCases.ADD_GROUP_MESSAGE,
+          newMessage: {
+            ...data.message,
+          },
+        });
+      } else {
+        const { data } = await axios.post(ADD_MESSAGE_ROUTE, {
+          to: currentChatUser?._id,
+          from: userInfo?.id,
+          message,
+        });
+        socket.current.emit("send-msg", {
+          to: currentChatUser?._id,
+          from: userInfo?.id,
+          message: data.message,
+        });
+        dispatch({
+          type: reducerCases.ADD_MESSAGE,
+          newMessage: {
+            ...data.message,
+            messageStatus: "sent",
+          },
+          fromSelf: true,
+        });
 
-      // --- NEW: Add to chat list if not present ---
-      const alreadyInContacts = userContacts.some(
-        ( c ) => c._id === currentChatUser._id || c.id === currentChatUser._id
-      );
-      if ( !alreadyInContacts ) {
-        dispatch( {
-          type: reducerCases.SET_USER_CONTACTS,
-          userContacts: [
-            {
-              ...currentChatUser,
-              lastMessage: message,
-              // add any other fields you want to show in the chat list
-            },
-            ...userContacts,
-          ],
-        } );
+        // --- NEW: Add to chat list if not present ---
+        const alreadyInContacts = userContacts.some(
+          (c) => c._id === currentChatUser._id || c.id === currentChatUser._id
+        );
+        if (!alreadyInContacts) {
+          dispatch({
+            type: reducerCases.SET_USER_CONTACTS,
+            userContacts: [
+              {
+                ...currentChatUser,
+                lastMessage: message,
+                // add any other fields you want to show in the chat list
+              },
+              ...userContacts,
+            ],
+          });
+        }
+        // --- END NEW ---
       }
-      // --- END NEW ---
-
-      setMessage( "" );
+      setMessage("");
       if (textareaRef.current) {
         textareaRef.current.style.height = '40px';
       }
-    } catch ( error ) {
-      console.log( error )
+    } catch (error) {
+      console.log(error)
     }
   };
 

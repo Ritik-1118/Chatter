@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addMessage, getMessages,addImageMessage,addAudioMessage, getInitialContactsWithMessages } from "../controllers/MessageController.js";
+import { addMessage, getMessages,addImageMessage, addAudioMessage, getInitialContactsWithMessages, addGroupMessage, getGroupMessages } from "../controllers/MessageController.js";
 import multer from "multer";
 
 const router = Router();

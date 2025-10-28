@@ -18,6 +18,8 @@ export const initialState = {
     voiceCall:undefined,
     incomingVideoCall:undefined,
     incomingVoiceCall:undefined,
+    userGroups: [],
+    groupMessages: [],
 };
 
 const reducer = (state,action)=>{
@@ -129,6 +131,26 @@ const reducer = (state,action)=>{
                     ...state,
                     currentChatUser:undefined,
                 }
+        case reducerCases.SET_USER_GROUPS:
+            return {
+                ...state,
+                userGroups: action.userGroups,
+            };
+        case reducerCases.SET_GROUP_MESSAGES:
+            return {
+                ...state,
+                groupMessages: action.groupMessages,
+            };
+        case reducerCases.ADD_GROUP_MESSAGE:
+            return {
+                ...state,
+                groupMessages: [...state.groupMessages, action.newMessage],
+            };
+        case reducerCases.ADD_USER_GROUP:
+            return {
+                ...state,
+                userGroups: [...state.userGroups, action.newGroup],
+            };
         default:
             return state;
     }
