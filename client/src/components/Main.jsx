@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import ChatList from "./Chatlist/ChatList";
 import Empty from "./Empty";
-import { onAuthStateChanged, updateCurrentUser } from "firebase/auth";
-import { firebaseAuth } from "@/utils/FirebaseConfig";
 import { setAxiosAuthToken } from "@/utils/authHeaders";
 import axios from "axios";
-import { CHECK_USER_ROUTE, GET_MESSAGES_ROUTE, HOST } from "@/utils/ApiRoutes";
+import { GET_MESSAGES_ROUTE, HOST } from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
 import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
@@ -17,6 +15,7 @@ import VoiceCall from "./Call/VoiceCall";
 import IncomingVideoCall from "./common/IncomingVideoCall";
 import IncomingCall from "./common/IncomingCall";
 import LeftSidebar from "./LeftSide/LeftSidebar";
+import useAuthBootstrap from "@/hooks/useAuthBootstrap";
 
 function Main () {
   const router = useRouter();
@@ -66,39 +65,15 @@ function Main () {
   }, [ dispatch ] );
   // console.log("smWindows from main page::::::::::-",smWindows)
   // console.log("currentChatUser from main page::::::::::-",currentChatUser)
-  const [ redirectLogin, setRedirectLogin ] = useState( false );
-
   const [ socketEvent, setSocketEvent ] = useState( false );
   const socket = useRef();
   const currentChatUserRef = useRef(currentChatUser);
 
+  useAuthBootstrap(dispatch, userInfo, router);
+
   useEffect(() => {
     currentChatUserRef.current = currentChatUser;
   }, [currentChatUser]);
-
-  useEffect( () => {
-    if ( redirectLogin ) router.push( "/login" );
-  }, [ redirectLogin ] );
-
-  onAuthStateChanged( firebaseAuth, async ( currentUser ) => {
-    if ( !currentUser ) setRedirectLogin( true );
-    if ( !userInfo && currentUser?.email ) {
-      await setAxiosAuthToken();
-      const { data } = await axios.post( CHECK_USER_ROUTE, { email: currentUser.email } );
-      if ( !data.status ) {
-        router.push( "/login" );
-      }
-      if ( data?.data ) {
-        const { _id, name, email, profilePicture: profileImage, status } = data.data;
-        dispatch( {
-          type: reducerCases.SET_USER_INFO,
-          userInfo: {
-            id: _id, name, email, profileImage, status,
-          },
-        } );
-      }
-    }
-  } );
 
   // Setting socket when user add
   useEffect( () => {
