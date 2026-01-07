@@ -3,6 +3,7 @@ import ChatList from "./Chatlist/ChatList";
 import Empty from "./Empty";
 import { onAuthStateChanged, updateCurrentUser } from "firebase/auth";
 import { firebaseAuth } from "@/utils/FirebaseConfig";
+import { setAxiosAuthToken } from "@/utils/authHeaders";
 import axios from "axios";
 import { CHECK_USER_ROUTE, GET_MESSAGES_ROUTE, HOST } from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
@@ -82,6 +83,7 @@ function Main () {
   onAuthStateChanged( firebaseAuth, async ( currentUser ) => {
     if ( !currentUser ) setRedirectLogin( true );
     if ( !userInfo && currentUser?.email ) {
+      await setAxiosAuthToken();
       const { data } = await axios.post( CHECK_USER_ROUTE, { email: currentUser.email } );
       if ( !data.status ) {
         router.push( "/login" );
@@ -209,6 +211,7 @@ function Main () {
   useEffect( () => {
     // console.log("currentChatUser::::::::::", currentChatUser);
     const getMessages = async () => {
+      await setAxiosAuthToken();
       const { data: { messages }, } = await axios.get( `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser._id}` );
       dispatch( { type: reducerCases.SET_MESSAGES, messages } );
     }

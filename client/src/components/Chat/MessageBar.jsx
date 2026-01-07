@@ -15,6 +15,7 @@ const CaptureAudio = dynamic( () => import( "../common/CaptureAudio" ), {
   ssr: false,
 } );
 import { useTheme } from '@/context/ThemeContext';
+import { setAxiosAuthToken } from "@/utils/authHeaders";
 
 function MessageBar () {
   const [ { userInfo, currentChatUser, socket, userContacts }, dispatch ] = useStateProvider();
@@ -46,6 +47,7 @@ function MessageBar () {
       const file = e.target.files[ 0 ];
       const formData = new FormData();
       formData.append( "image", file );
+      await setAxiosAuthToken();
       const response = await axios.post( ADD_IMAGE_MESSAGE_ROUTE, formData, {
         headers: {
           "Content-Type": "Multipart/form-data",
@@ -98,6 +100,7 @@ function MessageBar () {
 
   const sendMessage = async () => {
     try {
+      await setAxiosAuthToken();
       // console.log("CurrentUser:- ",currentChatUser);
       // console.log("userInfo:- ",userInfo);
       // console.log("Message =",message);

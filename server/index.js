@@ -6,6 +6,7 @@ import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js"
 import { Server } from "socket.io";
 import Message from "./models/message-model.js";
+import AuthMiddleware from "./middlewares/AuthMiddleware.js";
 
 dotenv.config();
 const app = express()
@@ -16,8 +17,8 @@ app.use(express.json());
 app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/images", express.static("uploads/images"));
 
-app.use("/api/auth", AuthRoutes);
-app.use("/api/messages",MessageRoutes);
+app.use("/api/auth", AuthMiddleware, AuthRoutes);
+app.use("/api/messages", AuthMiddleware, MessageRoutes);
 
 const port = process.env.PORT || 8000;
 connectDb();
@@ -58,7 +59,7 @@ io.on("connection",(socket) =>{
     socket.on("send-msg", async (data) => {
         const sendUserSocket = onlineUsers.get(data.to);
         if (sendUserSocket) {
-            // Deliver the message to the recipient
+            // Deliver the message  to the recipient
             socket.to(sendUserSocket).emit("msg-recieve", {
                 from: data.from,
                 message: data.message,

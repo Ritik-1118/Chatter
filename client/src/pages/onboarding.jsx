@@ -7,6 +7,7 @@ import axios from "axios";
 import { reducerCases } from "@/context/constants";
 import { ONBOARD_USER_ROUTE } from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
+import { setAxiosAuthToken } from "@/utils/authHeaders";
 
 function onboarding () {
 
@@ -48,6 +49,7 @@ function onboarding () {
     if ( validateDetails() ) {
       const email = userInfo.email;
       try {
+        await setAxiosAuthToken();
         const { data } = await axios.post( ONBOARD_USER_ROUTE, { email, name, about, image, } );
         // console.log("ONBOARD Data is:::::::::::::::::::::: ",{data});
         if ( data.status ) {

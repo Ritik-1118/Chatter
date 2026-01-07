@@ -92,7 +92,7 @@ import {generateToken04} from "../utils/TokenGenerator.js"
 
 export const checkUser = async (req, res, next) => {
     try {
-        const { email } = req.body;
+        const email = req.user?.email;
         if (!email) {
             return res.json({
                 msg: "Email is required.",
@@ -118,7 +118,8 @@ export const checkUser = async (req, res, next) => {
 };
 export const onBoardUser = async (req, res, next) => {
     try {
-        const { email, name, about, image: profilePicture } = req.body;
+        const email = req.user?.email;
+        const { name, about, image: profilePicture } = req.body;
         if (!email || !name || !profilePicture) {
             return res.send("Email, Name, and Image are required.");
         }

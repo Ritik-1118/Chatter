@@ -2,6 +2,7 @@ import { useStateProvider } from "@/context/StateContext";
 import { reducerCases } from "@/context/constants";
 import { CHECK_USER_ROUTE } from "@/utils/ApiRoutes";
 import { firebaseAuth } from "@/utils/FirebaseConfig";
+import { setAxiosAuthToken } from "@/utils/authHeaders";
 import axios from "axios";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import Image from "next/image";
@@ -35,6 +36,7 @@ function login() {
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(firebaseAuth, provider);
     const user = userCredential.user;
+    await setAxiosAuthToken();
     const name = user.displayName;
     const uid = user.uid;
     const email = user.email;

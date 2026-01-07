@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import {BiArrowBack,BiSearchAlt2} from "react-icons/bi";
 import ChatLIstItem from "./ChatLIstItem";
 import { useTheme } from '@/context/ThemeContext';
+import { setAxiosAuthToken } from "@/utils/authHeaders";
 
 function ContactsList() {
 
@@ -32,6 +33,7 @@ function ContactsList() {
     useEffect(()=>{
         const getContacts = async() =>{
             try {
+                await setAxiosAuthToken();
                 const {
                     data:{users},
                 } = await axios.get(GET_ALL_CONTACTS);
