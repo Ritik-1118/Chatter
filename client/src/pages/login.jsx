@@ -14,6 +14,8 @@ function login() {
   const router = useRouter();
   const [{ userInfo, newUser }, dispatch] = useStateProvider();
   const [theme, setTheme] = useState('dark');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     // Check localStorage or system preference
@@ -33,15 +35,18 @@ function login() {
   }, [userInfo, newUser]);
 
   const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(firebaseAuth, provider);
-    const user = userCredential.user;
-    await setAxiosAuthToken();
-    const name = user.displayName;
-    const uid = user.uid;
-    const email = user.email;
-    const profileImage = user.photoURL;
+    setError("");
+    setLoading(true);
     try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(firebaseAuth, provider);
+      const user = userCredential.user;
+      await setAxiosAuthToken();
+      const name = user.displayName;
+      const uid = user.uid;
+      const email = user.email;
+      const profileImage = user.photoURL;
+
       if (email) {
         const { data } = await axios.post(CHECK_USER_ROUTE, { email });
         if (!data.status) {
@@ -64,7 +69,10 @@ function login() {
         }
       }
     } catch (err) {
+      setError("Google sign-in failed. Please try again.");
       console.log(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,6 +104,11 @@ function login() {
           <Image src={'/gifs/G1.gif'} alt="Chatter Logo" width={80} height={80} className={`rounded-full shadow-lg border-4 ${theme === 'dark' ? 'border-dark-accent' : 'border-light-accent'}`} />
           <span className={`mt-3 text-4xl font-extrabold drop-shadow-lg tracking-wide animate-bounce font-mono ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}`}>Chatter</span>
         </div>
+        {error && (
+          <div className={`w-full mb-4 px-4 py-3 rounded-lg text-sm font-medium ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-700'}`} role="alert">
+            {error}
+          </div>
+        )}
         {/* Welcome Message */}
         <div className="mb-6 text-center">
           <h1 className={`text-2xl md:text-3xl font-bold mb-2 drop-shadow ${theme === 'dark' ? 'text-dark-primary-text' : 'text-light-primary-text'}`}>Welcome Back!</h1>
@@ -105,9 +118,12 @@ function login() {
         <button
           className={`flex items-center justify-center gap-4 w-full py-3 px-5 rounded-xl transition-all duration-200 shadow-xl hover:scale-105 focus:outline-none focus:ring-2 group ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent' : 'bg-light-accent text-light-surface border-light-accent'} border`}
           onClick={handleLogin}
+          disabled={loading}
         >
-          <FcGoogle className="text-2xl group-hover:scale-110 transition-transform duration-200" />
-          <span className="text-base font-semibold transition-colors duration-200 tracking-wide">Login with Google</span>
+          <FcGoogle className={`text-2xl transition-transform duration-200 ${loading ? '' : 'group-hover:scale-110'}`} />
+          <span className="text-base font-semibold transition-colors duration-200 tracking-wide">
+            {loading ? "Signing in..." : "Login with Google"}
+          </span>
         </button>
       </div>
       {/* Decorative Bubbles */}

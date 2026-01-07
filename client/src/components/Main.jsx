@@ -68,6 +68,7 @@ function Main () {
   const [ socketEvent, setSocketEvent ] = useState( false );
   const socket = useRef();
   const currentChatUserRef = useRef(currentChatUser);
+  const [ messagesLoading, setMessagesLoading ] = useState( false );
 
   useAuthBootstrap(dispatch, userInfo, router);
 
@@ -168,12 +169,21 @@ function Main () {
   useEffect( () => {
     // console.log("currentChatUser::::::::::", currentChatUser);
     const getMessages = async () => {
-      await setAxiosAuthToken();
-      const { data: { messages }, } = await axios.get( `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser._id}` );
-      dispatch( { type: reducerCases.SET_MESSAGES, messages } );
+      setMessagesLoading( true );
+      try {
+        await setAxiosAuthToken();
+        const { data: { messages }, } = await axios.get( `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser._id}` );
+        dispatch( { type: reducerCases.SET_MESSAGES, messages } );
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setMessagesLoading( false );
+      }
     }
     if ( currentChatUser?._id ) {
       getMessages();
+    } else {
+      setMessagesLoading( false );
     }
   }, [ currentChatUser ] )
 
@@ -208,11 +218,11 @@ function Main () {
         <div className="flex h-screen w-screen max-h-screen max-w-full overflow-hidden">
 
           <LeftSidebar />
-          <ChatList />
+          <ChatList loading={ !userInfo } />
           { currentChatUser && !showSmChatList ? (
             <>
               <div className={ `${messagesSearch ? " grid grid-cols-2" : " grid-cols-2"} w-full` }>
-                <Chat />
+                <Chat isMessagesLoading={messagesLoading} />
                 { messagesSearch && <SearchMessages /> }
               </div>
             </>

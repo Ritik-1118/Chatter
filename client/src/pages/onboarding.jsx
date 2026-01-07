@@ -17,6 +17,8 @@ function onboarding () {
   const [ about, setAbout ] = useState( "" );
   const [ image, setImage ] = useState( "/default_avatar.png" );
   const [ theme, setTheme ] = useState( 'dark' );
+  const [ loading, setLoading ] = useState( false );
+  const [ error, setError ] = useState( "" );
 
   useEffect( () => {
     // Check localStorage or system preference
@@ -46,29 +48,37 @@ function onboarding () {
   }, [ newUser, userInfo, router ] )
 
   const onboardUserHandler = async () => {
-    if ( validateDetails() ) {
-      const email = userInfo.email;
-      try {
-        await setAxiosAuthToken();
-        const { data } = await axios.post( ONBOARD_USER_ROUTE, { email, name, about, image, } );
-        // console.log("ONBOARD Data is:::::::::::::::::::::: ",{data});
-        if ( data.status ) {
-          dispatch( { type: reducerCases.SET_NEW_USER, newUser: false } );
-          dispatch( {
-            type: reducerCases.SET_USER_INFO,
-            userInfo: {
-              id: data.user._id,
-              name,
-              email,
-              profileImage: image,
-              status: about,
-            },
-          } );
-          router.push( "/" );
-        }
-      } catch ( error ) {
-        console.log( error );
+    setError( "" );
+    if ( !validateDetails() ) {
+      setError( "Display name must be at least 3 characters." );
+      return;
+    }
+    const email = userInfo.email;
+    try {
+      setLoading( true );
+      await setAxiosAuthToken();
+      const { data } = await axios.post( ONBOARD_USER_ROUTE, { email, name, about, image, } );
+      if ( data.status ) {
+        dispatch( { type: reducerCases.SET_NEW_USER, newUser: false } );
+        dispatch( {
+          type: reducerCases.SET_USER_INFO,
+          userInfo: {
+            id: data.user._id,
+            name,
+            email,
+            profileImage: image,
+            status: about,
+          },
+        } );
+        router.push( "/" );
+      } else {
+        setError( "Profile creation failed. Please retry." );
       }
+    } catch ( error ) {
+      console.log( error );
+      setError( "Could not create profile. Check your connection and try again." );
+    } finally {
+      setLoading( false );
     }
   };
   const validateDetails = () => {
@@ -96,6 +106,11 @@ function onboarding () {
           <h2 className={ `text-2xl font-semibold mb-1 ${theme === 'dark' ? 'text-dark-primary-text' : 'text-light-primary-text'}` }>Create your profile</h2>
           <p className={ `text-base ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>Let others know who you are!</p>
         </div>
+        { error && (
+          <div className={ `w-full mb-4 px-4 py-3 rounded-lg text-sm font-medium ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-700'}` } role="alert">
+            { error }
+          </div>
+        ) }
         {/* Card */ }
         <div className={ `flex flex-col md:flex-row w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider' : 'bg-light-secondary-background border-light-divider'} border` }>
           {/* Avatar Section */ }
@@ -108,10 +123,11 @@ function onboarding () {
             <Input name="Display Name" state={ name } setState={ setName } label />
             <Input name="about" state={ about } setState={ setAbout } label />
             <button
-              className={ `w-full py-3 px-6 rounded-xl font-semibold shadow-lg transition-all duration-200 text-lg mt-2 hover:scale-105 focus:outline-none ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent' : 'bg-light-accent text-light-surface border-light-accent'} border` }
+              className={ `w-full py-3 px-6 rounded-xl font-semibold shadow-lg transition-all duration-200 text-lg mt-2 hover:scale-105 focus:outline-none ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent' : 'bg-light-accent text-light-surface border-light-accent'} border ${loading ? 'opacity-80 cursor-not-allowed' : ''}` }
               onClick={ onboardUserHandler }
+              disabled={ loading }
             >
-              Create Profile
+              { loading ? "Creating profile..." : "Create Profile" }
             </button>
           </div>
         </div>
