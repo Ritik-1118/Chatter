@@ -129,25 +129,9 @@ function Main () {
           } );
         } else {
           // Update chat list preview for the sender (or receiver)
-          dispatch(prev => {
-            const { userContacts } = prev;
-            const contactIndex = userContacts.findIndex(
-              c => c._id === data.message.sender || c.id === data.message.sender
-            );
-            if (contactIndex !== -1) {
-              // Update the message preview for that contact
-              const updatedContacts = [...userContacts];
-              updatedContacts[contactIndex] = {
-                ...updatedContacts[contactIndex],
-                message: data.message.message,
-                type: data.message.type || "text",
-              };
-              return {
-                ...prev,
-                userContacts: updatedContacts,
-              };
-            }
-            return prev;
+          dispatch({
+            type: reducerCases.UPDATE_CONTACT_PREVIEW,
+            message: data.message,
           });
           // Show a notification (for now, just log)
           // console.log("New message from:", data.message.sender, data.message.message);
@@ -156,21 +140,19 @@ function Main () {
 
       // Listen for delivery receipts
       socket.current.on("delivered", ({ messageId }) => {
-        dispatch(prev => {
-          const updatedMessages = prev.messages.map(msg =>
-            msg._id === messageId ? { ...msg, messageStatus: "delivered" } : msg
-          );
-          return { ...prev, messages: updatedMessages };
+        dispatch({
+          type: reducerCases.BULK_UPDATE_MESSAGE_STATUS,
+          ids: [messageId],
+          status: "delivered",
         });
       });
 
       // Listen for read receipts
       socket.current.on("read", ({ messageIds }) => {
-        dispatch(prev => {
-          const updatedMessages = prev.messages.map(msg =>
-            messageIds.includes(msg._id) ? { ...msg, messageStatus: "read" } : msg
-          );
-          return { ...prev, messages: updatedMessages };
+        dispatch({
+          type: reducerCases.BULK_UPDATE_MESSAGE_STATUS,
+          ids: messageIds,
+          status: "read",
         });
       });
 

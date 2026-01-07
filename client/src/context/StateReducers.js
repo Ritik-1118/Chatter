@@ -129,6 +129,37 @@ const reducer = (state,action)=>{
                     ...state,
                     currentChatUser:undefined,
                 }
+
+            case reducerCases.UPDATE_CONTACT_PREVIEW: {
+                const { message } = action;
+                const userContacts = state.userContacts || [];
+                const contactIndex = userContacts.findIndex(
+                    (c) => c._id === message.sender || c.id === message.sender
+                );
+                if (contactIndex === -1) return state;
+                const updatedContacts = [...userContacts];
+                updatedContacts[contactIndex] = {
+                    ...updatedContacts[contactIndex],
+                    message: message.message,
+                    type: message.type || "text",
+                };
+                return {
+                    ...state,
+                    userContacts: updatedContacts,
+                };
+            }
+
+            case reducerCases.BULK_UPDATE_MESSAGE_STATUS: {
+                const { ids = [], status } = action;
+                if (!status || !Array.isArray(ids) || !ids.length) return state;
+                const updatedMessages = state.messages.map((msg) =>
+                    ids.includes(msg._id) ? { ...msg, messageStatus: status } : msg
+                );
+                return {
+                    ...state,
+                    messages: updatedMessages,
+                };
+            }
         default:
             return state;
     }
