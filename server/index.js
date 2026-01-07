@@ -7,6 +7,8 @@ import MessageRoutes from "./routes/MessageRoutes.js"
 import { Server } from "socket.io";
 import Message from "./models/message-model.js";
 import AuthMiddleware from "./middlewares/AuthMiddleware.js";
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 const app = express()
@@ -21,6 +23,17 @@ app.use("/api/auth", AuthMiddleware, AuthRoutes);
 app.use("/api/messages", AuthMiddleware, MessageRoutes);
 
 const port = process.env.PORT || 8000;
+// Ensure upload directories exist in all environments
+const uploadDirs = [
+    path.join(process.cwd(), "uploads", "images"),
+    path.join(process.cwd(), "uploads", "recordings"),
+];
+uploadDirs.forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
+
 connectDb();
 const server = app.listen(port,()=>{
     console.log(`Server is running on PORT:${port}`);

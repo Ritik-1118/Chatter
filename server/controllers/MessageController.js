@@ -1,6 +1,5 @@
 import Message from '../models/message-model.js'; 
 import User from "../models/user-model.js"; 
-import {renameSync} from 'fs';
 
 // import getPrismaInstance from "../utils/PrismaClient.js";
 
@@ -284,10 +283,6 @@ export const getMessages = async (req, res, next) => {
 export const addImageMessage = async (req, res, next) => {
     try {
         if (req.file) {
-            const date = Date.now();
-            const fileName = "uploads/images/" + date + req.file.originalname;
-            renameSync(req.file.path, fileName);
-
             const { from, to } = req.query;
             const authedUser = await User.findOne({ email: req.user?.email });
             if (!authedUser || authedUser._id.toString() !== from.toString()) {
@@ -296,7 +291,7 @@ export const addImageMessage = async (req, res, next) => {
             // console.log(from, to)
             if (from && to) {
                 const message = await Message.create({
-                    message: fileName,
+                    message: `uploads/images/${req.file.filename}`,
                     sender: from,
                     receiver: to,
                     type: "image",
@@ -316,10 +311,6 @@ export const addImageMessage = async (req, res, next) => {
 export const addAudioMessage = async (req, res, next) => {
     try {
         if (req.file) {
-            const date = Date.now();
-            const fileName = "uploads/recordings/" + date + req.file.originalname;
-            renameSync(req.file.path, fileName);
-
             const { from, to } = req.query;
             const authedUser = await User.findOne({ email: req.user?.email });
             if (!authedUser || authedUser._id.toString() !== from.toString()) {
@@ -327,7 +318,7 @@ export const addAudioMessage = async (req, res, next) => {
             }
             if (from && to) {
                 const message = await Message.create({
-                    message: fileName,
+                    message: `uploads/recordings/${req.file.filename}`,
                     sender: from,
                     receiver: to,
                     type: "audio",
