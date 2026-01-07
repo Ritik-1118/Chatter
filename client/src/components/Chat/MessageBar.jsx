@@ -1,5 +1,4 @@
 import { useStateProvider } from "@/context/StateContext";
-import reducer from "@/context/StateReducers";
 import { reducerCases } from "@/context/constants";
 import { ADD_IMAGE_MESSAGE_ROUTE, ADD_MESSAGE_ROUTE } from "@/utils/ApiRoutes";
 import axios from "axios";
@@ -42,6 +41,11 @@ function MessageBar () {
     }
   };
 
+  const emitSafe = (event, payload) => {
+    if (socket?.current?.emitSafe) socket.current.emitSafe(event, payload);
+    else if (socket?.current) socket.current.emit(event, payload);
+  };
+
   const PhotoPickerChange = async ( e ) => {
     try {
       const file = e.target.files[ 0 ];
@@ -58,19 +62,17 @@ function MessageBar () {
         },
       } );
       if ( response.status === 201 ) {
-        socket.current.emit( "send-msg", {
-          to: currentChatUser?._id,
-          from: userInfo?.id,
-          message: response.data.message,
-        } );
         const chatId = currentChatUser?._id;
+        const messagePayload = { ...response.data.message, messageStatus: "sent" };
+        emitSafe( "send-msg", {
+          to: chatId,
+          from: userInfo?.id,
+          message: messagePayload,
+        } );
         dispatch( {
-          type: reducerCases.ADD_MESSAGE,
+          type: reducerCases.UPSERT_MESSAGE,
           chatId,
-          newMessage: {
-            ...response.data.message,
-          },
-          fromSelf: true,
+          message: messagePayload,
         } );
       }
     } catch ( error ) {
@@ -101,31 +103,48 @@ function MessageBar () {
   };
 
   const sendMessage = async () => {
+    const chatId = currentChatUser?._id;
+    if (!chatId || !message.trim()) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = {
+      _id: tempId,
+      tempId,
+      sender: userInfo?.id,
+      receiver: chatId,
+      message,
+      type: "text",
+      createdAt: new Date().toISOString(),
+      messageStatus: "pending",
+    };
+
+    dispatch({
+      type: reducerCases.UPSERT_MESSAGE,
+      chatId,
+      message: optimistic,
+    });
+
     try {
       await setAxiosAuthToken();
-      // console.log("CurrentUser:- ",currentChatUser);
-      // console.log("userInfo:- ",userInfo);
-      // console.log("Message =",message);
       const { data } = await axios.post( ADD_MESSAGE_ROUTE, {
-        to: currentChatUser?._id,
+        to: chatId,
         from: userInfo?.id,
         message,
       } );
-      // console.log("response ######################",{data})
-      socket.current.emit( "send-msg", {
-        to: currentChatUser?._id,
-        from: userInfo?.id,
-        message: data.message,
-      } );
-      const chatId = currentChatUser?._id;
-      dispatch( {
-        type: reducerCases.ADD_MESSAGE,
+
+      const confirmed = { ...data.message, messageStatus: "sent" };
+      dispatch({
+        type: reducerCases.UPSERT_MESSAGE,
         chatId,
-        newMessage: {
-          ...data.message,
-          messageStatus: "sent",
-        },
-        fromSelf: true,
+        tempId,
+        message: confirmed,
+      });
+
+      emitSafe( "send-msg", {
+        to: chatId,
+        from: userInfo?.id,
+        message: confirmed,
+        tempId,
       } );
 
       // --- NEW: Add to chat list if not present ---
@@ -153,6 +172,12 @@ function MessageBar () {
       }
     } catch ( error ) {
       console.log( error )
+      dispatch({
+        type: reducerCases.UPSERT_MESSAGE,
+        chatId,
+        tempId,
+        message: { ...optimistic, messageStatus: "failed" },
+      });
     }
   };
 

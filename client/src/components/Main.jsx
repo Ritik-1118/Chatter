@@ -16,7 +16,6 @@ import IncomingVideoCall from "./common/IncomingVideoCall";
 import IncomingCall from "./common/IncomingCall";
 import LeftSidebar from "./LeftSide/LeftSidebar";
 import useAuthBootstrap from "@/hooks/useAuthBootstrap";
-
 function Main () {
   const router = useRouter();
   const [
@@ -27,147 +26,203 @@ function Main () {
       messagesByChat,
       currentChatUser,
       messagesSearch,
+      onlineUsers,
+      socketStatus,
       voiceCall,
       videoCall,
       incomingVoiceCall,
       incomingVideoCall
     }, dispatch
   ] = useStateProvider();
-  // console.log("userInfo from main page::::::::::-",userInfo)
+
+  const socket = useRef();
+  const currentChatUserRef = useRef(currentChatUser);
+  const onlineUsersRef = useRef(onlineUsers);
+  const [ messagesLoading, setMessagesLoading ] = useState( false );
+  const pendingEmits = useRef([]);
+
+  useAuthBootstrap(dispatch, userInfo, router);
+
   useEffect( () => {
     const handleResize = () => {
       if ( window.innerWidth <= 768 ) {
-        dispatch( {
-          type: reducerCases.SET_SM_WINDOWS_TRUE,
-          smWindows: true,
-        } );
-        dispatch( {
-          type: reducerCases.SET_SHOW_SM_CHATLIST,
-          showSmChatList: true,
-        } );
+        dispatch( { type: reducerCases.SET_SM_WINDOWS_TRUE, smWindows: true } );
+        dispatch( { type: reducerCases.SET_SHOW_SM_CHATLIST, showSmChatList: true } );
       } else {
-        dispatch( {
-          type: reducerCases.SET_SM_WINDOWS_TRUE,
-          smWindows: false,
-        } );
-        dispatch( {
-          type: reducerCases.SET_SHOW_SM_CHATLIST,
-          showSmChatList: false,
-        } );
+        dispatch( { type: reducerCases.SET_SM_WINDOWS_TRUE, smWindows: false } );
+        dispatch( { type: reducerCases.SET_SHOW_SM_CHATLIST, showSmChatList: false } );
       }
     };
 
-    handleResize(); // Call it initially to set the state based on the current window size
+    handleResize();
     window.addEventListener( 'resize', handleResize );
-
-    return () => {
-      window.removeEventListener( 'resize', handleResize );
-    };
+    return () => window.removeEventListener( 'resize', handleResize );
   }, [ dispatch ] );
-  // console.log("smWindows from main page::::::::::-",smWindows)
-  // console.log("currentChatUser from main page::::::::::-",currentChatUser)
-  const [ socketEvent, setSocketEvent ] = useState( false );
-  const socket = useRef();
-  const currentChatUserRef = useRef(currentChatUser);
-  const [ messagesLoading, setMessagesLoading ] = useState( false );
-
-  useAuthBootstrap(dispatch, userInfo, router);
 
   useEffect(() => {
     currentChatUserRef.current = currentChatUser;
   }, [currentChatUser]);
 
-  // Setting socket when user add
-  useEffect( () => {
-    if ( userInfo ) {
-      socket.current = io( HOST );
-      socket.current.emit( "add-user", userInfo.id );
-      dispatch( { type: reducerCases.SET_SOCKET, socket } );
-    }
-  }, [ userInfo ] );
+  useEffect(() => {
+    onlineUsersRef.current = onlineUsers;
+  }, [onlineUsers]);
 
   useEffect( () => {
-    if ( socket.current && !socketEvent ) {
-      socket.current.on( "msg-recieve", ( data ) => {
+    if ( !userInfo ) return;
+
+    let isMounted = true;
+    const setupSocket = async () => {
+      const token = await setAxiosAuthToken();
+      if ( !isMounted ) return;
+
+      console.log("[socket] init with token", Boolean(token));
+      socket.current = io( HOST, {
+        auth: { token },
+        reconnection: true,
+      } );
+      pendingEmits.current = [];
+
+      const markStatus = ( status ) => dispatch( { type: reducerCases.SET_SOCKET_STATUS, status } );
+      const flushQueue = () => {
+        if ( socket.current && socket.current.connected && pendingEmits.current?.length ) {
+          pendingEmits.current.forEach( ( item ) => {
+            socket.current.emit( item.event, item.payload );
+          } );
+          pendingEmits.current = [];
+        }
+      };
+
+      const emitSafe = ( event, payload ) => {
+        if ( socket.current && socket.current.connected ) {
+          socket.current.emit( event, payload );
+        } else {
+          pendingEmits.current = [ ...( pendingEmits.current || [] ), { event, payload } ];
+        }
+      };
+
+      socket.current.emitSafe = emitSafe;
+
+      const handleConnect = () => {
+        console.log("[socket] connected", socket.current.id);
+        markStatus( "connected" );
+        socket.current.emit( "add-user", userInfo.id );
+        flushQueue();
+      };
+      const handleConnectError = (err) => {
+        console.log("[socket] connect_error", err?.message);
+        markStatus( "disconnected" );
+      };
+      const handleReconnectAttempt = (attempt) => {
+        console.log("[socket] reconnect_attempt", attempt);
+        markStatus( "reconnecting" );
+      };
+      const handleReconnect = () => {
+        console.log("[socket] reconnected", socket.current.id);
+        markStatus( "connected" );
+        socket.current.emit( "add-user", userInfo.id );
+        flushQueue();
+      };
+      const handleDisconnect = (reason) => {
+        console.log("[socket] disconnected", reason);
+        markStatus( "disconnected" );
+      };
+
+      const handleMessageReceive = ( data ) => {
+        console.log("[socket] msg-recieve", data);
         const chatUser = currentChatUserRef.current;
-        // Only add to messages if the message is for the currently open chat
-        // console.log("Crrent Chat User:", chatUser, "Data: ", data)
         if (
-          (chatUser &&
-            (data.message.sender === chatUser._id || data.message.sender === chatUser.id)) ||
-          (chatUser &&
-            (data.message.receiver === chatUser._id || data.message.receiver === chatUser.id))
+          (chatUser && (data.message.sender === chatUser._id || data.message.sender === chatUser.id)) ||
+          (chatUser && (data.message.receiver === chatUser._id || data.message.receiver === chatUser.id))
         ) {
           const chatId = chatUser._id || chatUser.id;
-          dispatch( {
-            type: reducerCases.ADD_MESSAGE,
-            chatId,
-            newMessage: {
-              ...data.message,
-            }
-          } );
+          dispatch( { type: reducerCases.UPSERT_MESSAGE, chatId, message: { ...data.message } } );
         } else {
-          // Update chat list preview for the sender (or receiver)
-          dispatch({
-            type: reducerCases.UPDATE_CONTACT_PREVIEW,
-            message: data.message,
-          });
-          // Show a notification (for now, just log)
-          // console.log("New message from:", data.message.sender, data.message.message);
+          dispatch({ type: reducerCases.UPDATE_CONTACT_PREVIEW, message: data.message });
         }
-      });
+      };
 
-      // Listen for delivery receipts
-      socket.current.on("delivered", ({ messageId }) => {
-        dispatch({
-          type: reducerCases.BULK_UPDATE_MESSAGE_STATUS,
-          ids: [messageId],
-          status: "delivered",
-        });
-      });
+      const handleDelivered = ( { messageId } ) => {
+        console.log("[socket] delivered", messageId);
+        dispatch({ type: reducerCases.BULK_UPDATE_MESSAGE_STATUS, ids: [messageId], status: "delivered" });
+      };
 
-      // Listen for read receipts
-      socket.current.on("read", ({ messageIds }) => {
-        dispatch({
-          type: reducerCases.BULK_UPDATE_MESSAGE_STATUS,
-          ids: messageIds,
-          status: "read",
-        });
-      });
+      const handleAck = ({ tempId, message }) => {
+        console.log("[socket] msg-ack", { tempId, message });
+        if (!message) return;
+        const chatId = message.receiver || message.to || currentChatUserRef.current?._id;
+        if (!chatId) return;
+        dispatch({ type: reducerCases.UPSERT_MESSAGE, chatId, tempId, message });
+      };
 
-      // videoCall and voiceCall section
-      socket.current.on( "incoming-voice-call", ( { from, roomId, callType } ) => {
-        dispatch( {
-          type: reducerCases.SET_INCOMING_VOICE_CALL,
-          incomingVoiceCall: { ...from, roomId, callType },
-        } );
-      } );
-      socket.current.on( "incoming-video-call", ( { from, roomId, callType } ) => {
-        dispatch( {
-          type: reducerCases.SET_INCOMING_VIDEO_CALL,
-          incomingVideoCall: { ...from, roomId, callType },
-        } );
-      } );
-      socket.current.on( "voice-call-rejected", () => {
-        dispatch( {
-          type: reducerCases.END_CALL,
-        } );
-      } );
-      socket.current.on( "video-call-rejected", () => {
-        dispatch( {
-          type: reducerCases.END_CALL,
-        } );
-      } );
+      const handleRead = ( { messageIds } ) => {
+        dispatch({ type: reducerCases.BULK_UPDATE_MESSAGE_STATUS, ids: messageIds, status: "read" });
+      };
 
-      socket.current.on( "online-users", ( { onlineUsers } ) => {
-        dispatch( {
-          type: reducerCases.SET_ONLINE_USERS,
-          onlineUsers,
-        } )
-      } )
-      setSocketEvent( true );
-    }
-  }, [ socketEvent, userInfo ] );
+      const handleIncomingVoice = ( { from, roomId, callType } ) => {
+        dispatch( { type: reducerCases.SET_INCOMING_VOICE_CALL, incomingVoiceCall: { ...from, roomId, callType } } );
+      };
+      const handleIncomingVideo = ( { from, roomId, callType } ) => {
+        dispatch( { type: reducerCases.SET_INCOMING_VIDEO_CALL, incomingVideoCall: { ...from, roomId, callType } } );
+      };
+      const handleVoiceRejected = () => { dispatch( { type: reducerCases.END_CALL } ); };
+      const handleVideoRejected = () => { dispatch( { type: reducerCases.END_CALL } ); };
+
+      const handleOnlineUsers = ( { onlineUsers: nextOnline = [] } ) => {
+        const toStrSet = (arr=[]) => new Set(arr.map((u)=>u?.toString()));
+        const prev = toStrSet(onlineUsersRef.current || []);
+        const next = toStrSet(nextOnline);
+        if ( prev.size === next.size && [ ...prev ].every( ( u ) => next.has( u ) ) ) return;
+        dispatch( { type: reducerCases.SET_ONLINE_USERS, onlineUsers: [ ...next ] } )
+      };
+
+      socket.current.on( "connect", handleConnect );
+      socket.current.on( "connect_error", handleConnectError );
+      socket.current.on( "reconnect_attempt", handleReconnectAttempt );
+      socket.current.on( "reconnect", handleReconnect );
+      socket.current.on( "disconnect", handleDisconnect );
+      socket.current.on( "msg-recieve", handleMessageReceive );
+      socket.current.on( "delivered", handleDelivered );
+      socket.current.on( "msg-ack", handleAck );
+      socket.current.on( "read", handleRead );
+      socket.current.on( "incoming-voice-call", handleIncomingVoice );
+      socket.current.on( "incoming-video-call", handleIncomingVideo );
+      socket.current.on( "voice-call-rejected", handleVoiceRejected );
+      socket.current.on( "video-call-rejected", handleVideoRejected );
+      socket.current.on( "online-users", handleOnlineUsers );
+
+      dispatch( { type: reducerCases.SET_SOCKET, socket } );
+
+      return () => {
+        if ( socket.current ) {
+          socket.current.off( "connect", handleConnect );
+          socket.current.off( "connect_error", handleConnectError );
+          socket.current.off( "reconnect_attempt", handleReconnectAttempt );
+          socket.current.off( "reconnect", handleReconnect );
+          socket.current.off( "disconnect", handleDisconnect );
+          socket.current.off( "msg-recieve", handleMessageReceive );
+          socket.current.off( "delivered", handleDelivered );
+          socket.current.off( "msg-ack", handleAck );
+          socket.current.off( "read", handleRead );
+          socket.current.off( "incoming-voice-call", handleIncomingVoice );
+          socket.current.off( "incoming-video-call", handleIncomingVideo );
+          socket.current.off( "voice-call-rejected", handleVoiceRejected );
+          socket.current.off( "video-call-rejected", handleVideoRejected );
+          socket.current.off( "online-users", handleOnlineUsers );
+          socket.current.disconnect();
+        }
+      };
+    };
+
+    const cleanup = setupSocket();
+    return () => {
+      isMounted = false;
+      if (socket.current) {
+        socket.current.removeAllListeners();
+        socket.current.disconnect();
+      }
+      if (typeof cleanup === "function") cleanup();
+    };
+  }, [ userInfo ] );
 
   useEffect( () => {
     const getMessages = async (hasCache) => {
@@ -193,16 +248,6 @@ function Main () {
       setMessagesLoading( false );
     }
   }, [ currentChatUser ] )
-
-  useEffect(() => {
-    if (socket.current) {
-      socket.current.on("reconnect", () => {
-        if (userInfo) {
-          socket.current.emit("add-user", userInfo.id);
-        }
-      });
-    }
-  }, [userInfo, socket.current]);
 
   return (
     <>

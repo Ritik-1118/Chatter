@@ -1,5 +1,5 @@
-// export const HOST = "http://localhost:8000";
-export const HOST = "https://chatter-zdsf.onrender.com";
+export const HOST =
+	process.env.NEXT_PUBLIC_API_HOST?.trim() || "http://localhost:8000";
 const AUTH_ROUTE = `${HOST}/api/auth`;
 const MESSAGES_ROUTE = `${HOST}/api/messages`;
 

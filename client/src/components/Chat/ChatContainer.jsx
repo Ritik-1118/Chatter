@@ -1,16 +1,77 @@
 import { useStateProvider } from "@/context/StateContext";
 import { calculateTime } from "@/utils/CalculateTime";
-import React, { useEffect, useRef } from "react";
+import { reducerCases } from "@/context/constants";
+import React, { useCallback, useEffect, useRef } from "react";
 import MessageStatus from "../common/MessageStatus";
 import ImageMessage from "./ImageMessage";
 import dynamic from "next/dynamic";
+import axios from "axios";
+import { ADD_MESSAGE_ROUTE } from "@/utils/ApiRoutes";
+import { setAxiosAuthToken } from "@/utils/authHeaders";
 const VoiceMessage = dynamic( () => import( "./VoiceMessage" ), { ssr: false, } );
 import { useTheme } from '@/context/ThemeContext';
 
 function ChatContainer () {
-  const [ { messages, currentChatUser, userInfo, socket } ] = useStateProvider();
+  const [ { messages, currentChatUser, userInfo, socket }, dispatch ] = useStateProvider();
   const { theme } = useTheme();
   const messagesEndRef = useRef( null );
+
+  const emitSafe = useCallback((event, payload) => {
+    if (socket?.current?.emitSafe) socket.current.emitSafe(event, payload);
+    else if (socket?.current) socket.current.emit(event, payload);
+  }, [socket]);
+
+  const retrySend = useCallback(async (msg) => {
+    if (!currentChatUser?._id || !userInfo?.id) return;
+    const chatId = currentChatUser._id;
+    const tempId = msg.tempId || msg._id || `temp-${Date.now()}`;
+    const optimistic = {
+      ...msg,
+      _id: tempId,
+      tempId,
+      sender: userInfo.id,
+      receiver: chatId,
+      messageStatus: "pending",
+      createdAt: msg.createdAt || new Date().toISOString(),
+    };
+
+    dispatch({
+      type: reducerCases.UPSERT_MESSAGE,
+      chatId,
+      message: optimistic,
+    });
+
+    try {
+      await setAxiosAuthToken();
+      const { data } = await axios.post(ADD_MESSAGE_ROUTE, {
+        to: chatId,
+        from: userInfo.id,
+        message: msg.message,
+      });
+
+      const confirmed = { ...data.message, messageStatus: "sent" };
+      dispatch({
+        type: reducerCases.UPSERT_MESSAGE,
+        chatId,
+        tempId,
+        message: confirmed,
+      });
+
+      emitSafe("send-msg", {
+        to: chatId,
+        from: userInfo.id,
+        message: confirmed,
+        tempId,
+      });
+    } catch (error) {
+      dispatch({
+        type: reducerCases.UPSERT_MESSAGE,
+        chatId,
+        tempId,
+        message: { ...optimistic, messageStatus: "failed" },
+      });
+    }
+  }, [currentChatUser?._id, dispatch, emitSafe, userInfo?.id]);
 
   // Scroll to bottom when messages or chat changes
   useEffect( () => {
@@ -44,7 +105,7 @@ function ChatContainer () {
             { messages.map( ( message, index ) => (
               <div key={ message._id }
                 className={ `flex ${message.sender === currentChatUser._id ? "justify-start" : "justify-end"}` }>
-                { message.type === "text" && (
+                { (!message.type || message.type === "text") && (
                   <div className={ `px-2 py-[5px] text-sm rounded-md flex gap-2 items-end max-w-[90%]
                                     ${message.sender === currentChatUser._id
                       ? ( theme === 'dark' ? 'bg-dark-bubble-receiver text-dark-primary-text' : 'bg-light-bubble-receiver text-light-primary-text' )
@@ -68,6 +129,14 @@ function ChatContainer () {
                       </span>
                     </div>
                   </div>
+                ) }
+                { message.sender === userInfo.id && message.messageStatus === "failed" && (
+                  <button
+                    onClick={ () => retrySend(message) }
+                    className="text-xs text-red-500 underline mt-1 self-end"
+                  >
+                    Retry
+                  </button>
                 ) }
                 { message.type === "image" && <ImageMessage message={ message } /> }
                 { message.type === "audio" && <VoiceMessage message={ message } /> }

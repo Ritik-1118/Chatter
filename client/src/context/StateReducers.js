@@ -7,6 +7,7 @@ export const initialState = {
     currentChatUser:undefined,
     messages: [],
     messagesByChat: {},
+    socketStatus: "disconnected",
     socket: undefined,
     messagesSearch:false,
     userContacts: [],
@@ -53,15 +54,60 @@ const reducer = (state,action)=>{
                         ...state.messagesByChat,
                         [action.chatId]: action.messages,
                     };
+                    return {
+                        ...state,
+                        messagesByChat: updatedMessagesByChat,
+                        messages:
+                            state.currentChatUser && state.currentChatUser._id === action.chatId
+                                ? action.messages
+                                : state.messages,
+                    };
+                }
+            case reducerCases.UPSERT_MESSAGE: {
+                const { chatId, message, tempId } = action;
+                if (!chatId || !message) return state;
+
+                const existing = state.messagesByChat[chatId] || [];
+                const findIndex = (msg) =>
+                    msg._id === message._id ||
+                    (tempId && msg._id === tempId) ||
+                    (message.tempId && msg.tempId && msg.tempId === message.tempId);
+                const idx = existing.findIndex(findIndex);
+                const updatedForChat = idx > -1
+                    ? existing.map((m, i) => (i === idx ? { ...m, ...message, _id: message._id || m._id } : m))
+                    : [...existing, message];
+
+                const partnerId = message.sender === state.userInfo?.id
+                    ? (message.receiver || message.to)
+                    : message.sender;
+                const userContacts = state.userContacts || [];
+                const contactIndex = userContacts.findIndex(
+                    (c) => c._id === partnerId || c.id === partnerId
+                );
+                const updatedContacts = contactIndex > -1
+                    ? userContacts.map((c, i) => i === contactIndex
+                        ? {
+                            ...c,
+                            message: message.message,
+                            type: message.type || "text",
+                            messageStatus: message.messageStatus || c.messageStatus,
+                        }
+                        : c)
+                    : userContacts;
+
                 return {
                     ...state,
-                    messagesByChat: updatedMessagesByChat,
+                    userContacts: updatedContacts,
+                    messagesByChat: {
+                        ...state.messagesByChat,
+                        [chatId]: updatedForChat,
+                    },
                     messages:
-                        state.currentChatUser && state.currentChatUser._id === action.chatId
-                            ? action.messages
+                        state.currentChatUser && state.currentChatUser._id === chatId
+                            ? updatedForChat
                             : state.messages,
                 };
-                }
+            }
             case reducerCases.SET_SOCKET:
                 return {
                     ...state,
@@ -84,6 +130,11 @@ const reducer = (state,action)=>{
                             : state.messages,
                 };
             }
+            case reducerCases.SET_SOCKET_STATUS:
+                return {
+                    ...state,
+                    socketStatus: action.status,
+                };
             case reducerCases.SET_MESSAGE_SEARCH:
                 return {
                     ...state,

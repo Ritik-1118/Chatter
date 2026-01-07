@@ -7,6 +7,7 @@ import MessageRoutes from "./routes/MessageRoutes.js"
 import { Server } from "socket.io";
 import Message from "./models/message-model.js";
 import AuthMiddleware from "./middlewares/AuthMiddleware.js";
+import { firebaseAdmin } from "./utils/firebaseAdmin.js";
 import fs from "fs";
 import path from "path";
 
@@ -53,40 +54,85 @@ const io = new Server(server, {
 
 global.onlineUsers = new Map();
 
+io.use(async (socket, next) => {
+    try {
+        const token = socket.handshake.auth?.token;
+        console.log("[socket] handshake token present", Boolean(token));
+        if (!token) return next(new Error("unauthorized"));
+        const decoded = await firebaseAdmin.auth().verifyIdToken(token);
+        socket.user = { uid: decoded.uid, email: decoded.email };
+        console.log("[socket] auth ok", socket.user.email);
+        return next();
+    } catch (err) {
+        console.error("[socket] auth error", err?.message);
+        return next(new Error("unauthorized"));
+    }
+});
+
 io.on("connection",(socket) =>{
+    console.log("[socket] connected", socket.id, "user", socket.user?.email);
     global.chatSocket = socket;
     socket.on("add-user",(userId) =>{
-        onlineUsers.set(userId,socket.id);
+        const id = userId ? userId.toString() : undefined;
+        if (!id) return;
+        onlineUsers.set(id,socket.id);
+        console.log("[socket] add-user", { id, socketId: socket.id, onlineKeys: Array.from(onlineUsers.keys()) });
         socket.broadcast.emit("online-users",{
             onlineUsers:Array.from(onlineUsers.keys()),
         });
     });
 
     socket.on("signout",(id)=>{
-        onlineUsers.delete(id);
+        onlineUsers.delete(id?.toString());
         socket.broadcast.emit("online-users",{
             onlineUsers:Array.from(onlineUsers.keys()),
         });
     });
 
     socket.on("send-msg", async (data) => {
-        const sendUserSocket = onlineUsers.get(data.to);
+        const { message, from, to, tempId } = data || {};
+        const toId = to ? to.toString() : undefined;
+        const fromId = from ? from.toString() : undefined;
+        const normalizedMessage = message ? {
+            ...message,
+            sender: message.sender?.toString ? message.sender.toString() : message.sender,
+            receiver: message.receiver?.toString ? message.receiver.toString() : message.receiver,
+            type: message.type || "text",
+        } : message;
+        const sendUserSocket = toId ? onlineUsers.get(toId) : undefined;
+
+        console.log("[socket] send-msg", {
+            from: fromId,
+            to: toId,
+            hasRecipientSocket: !!sendUserSocket,
+            onlineKeys: Array.from(onlineUsers.keys()),
+        });
         if (sendUserSocket) {
-            // Deliver the message  to the recipient
+            // Deliver the message to the recipient
             socket.to(sendUserSocket).emit("msg-recieve", {
-                from: data.from,
-                message: data.message,
+                from: fromId,
+                message: normalizedMessage,
             });
-            // Update message status to 'delivered' in DB and notify sender
-            if (data.message && data.message._id) {
-                // await Message.findByIdAndUpdate(data.message._id, { messageStatus: "delivered" });
-                // Notify sender in real time
-                const senderSocket = onlineUsers.get(data.from);
-                if (senderSocket) {
-                    io.to(senderSocket).emit("delivered", {
-                        messageId: data.message._id,
-                    });
-                }
+        }
+
+        // Ack back to sender to reconcile optimistic messages
+        if (fromId) {
+            const senderSocket = onlineUsers.get(fromId);
+            if (senderSocket) {
+                io.to(senderSocket).emit("msg-ack", {
+                    tempId,
+                    message: normalizedMessage,
+                });
+            }
+        }
+
+        // Update message status to 'delivered' in DB and notify sender
+        if (normalizedMessage && normalizedMessage._id) {
+            const senderSocket = fromId ? onlineUsers.get(fromId) : undefined;
+            if (senderSocket) {
+                io.to(senderSocket).emit("delivered", {
+                    messageId: normalizedMessage._id,
+                });
             }
         }
     });
