@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useStateProvider } from "@/context/StateContext";
 import Input from "@/components/common/Input";
@@ -19,6 +19,7 @@ function onboarding () {
   const [ theme, setTheme ] = useState( 'dark' );
   const [ loading, setLoading ] = useState( false );
   const [ error, setError ] = useState( "" );
+  const headingRef = useRef(null);
 
   useEffect( () => {
     // Check localStorage or system preference
@@ -46,6 +47,10 @@ function onboarding () {
     if ( !newUser && !userInfo?.email ) router.push( "/login" );
     else if ( !newUser && userInfo?.email ) router.push( "/" );
   }, [ newUser, userInfo, router ] )
+
+  useEffect(() => {
+    if (headingRef.current) headingRef.current.focus();
+  }, []);
 
   const onboardUserHandler = async () => {
     setError( "" );
@@ -90,24 +95,35 @@ function onboarding () {
   return (
     <div className={ `relative min-h-screen w-full flex items-center justify-center overflow-hidden ${theme === 'dark' ? 'bg-dark-background' : 'bg-light-background'}` }>
       <button
-        className={ `absolute top-6 right-6 z-20 px-4 py-2 rounded-full shadow-md font-semibold transition-colors duration-200 focus:outline-none ${theme === 'dark' ? 'bg-dark-surface text-dark-accent border-dark-accent' : 'bg-light-surface text-light-accent border-light-accent'} border` }
+        type="button"
+        className={ `absolute top-6 right-6 z-20 px-4 py-2 rounded-full shadow-md font-semibold transition-colors duration-200 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'bg-dark-surface text-dark-accent border-dark-accent focus-visible:outline-dark-accent' : 'bg-light-surface text-light-accent border-light-accent focus-visible:outline-light-accent'} border` }
         onClick={ toggleTheme }
-        aria-label="Toggle dark/light mode"
+        aria-label="Toggle dark or light mode"
       >
         { theme === 'dark' ? '🌙 Dark' : '☀️ Light' }
       </button>
       {/* Animated Gradient Background */ }
       <div className={ `absolute inset-0 z-0 animate-gradient ${theme === 'dark' ? 'bg-dark-accent' : 'bg-light-accent'} opacity-20` } style={ { filter: 'blur(3px)' } } />
-      <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-2xl mx-4 animate-fade-in">
+      <main
+        role="main"
+        className="relative z-10 flex flex-col items-center justify-center w-full max-w-2xl mx-4 animate-fade-in"
+        aria-busy={loading}
+      >
         {/* Logo and Title */ }
         <div className="flex flex-col items-center mb-6">
           <Image src={ "/gifs/G1.gif" } alt="Chatter Logo" width={ 90 } height={ 90 } className={ `rounded-full shadow-lg mb-2 border-4 ${theme === 'dark' ? 'border-dark-accent' : 'border-light-accent'}` } />
           <span className={ `text-4xl font-extrabold tracking-wide font-mono mb-2 ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` }>Chatter</span>
-          <h2 className={ `text-2xl font-semibold mb-1 ${theme === 'dark' ? 'text-dark-primary-text' : 'text-light-primary-text'}` }>Create your profile</h2>
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className={ `text-2xl font-semibold mb-1 ${theme === 'dark' ? 'text-dark-primary-text' : 'text-light-primary-text'}` }
+          >
+            Create your profile
+          </h2>
           <p className={ `text-base ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>Let others know who you are!</p>
         </div>
         { error && (
-          <div className={ `w-full mb-4 px-4 py-3 rounded-lg text-sm font-medium ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-700'}` } role="alert">
+          <div className={ `w-full mb-4 px-4 py-3 rounded-lg text-sm font-medium ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-700'}` } role="alert" aria-live="assertive">
             { error }
           </div>
         ) }
@@ -120,18 +136,20 @@ function onboarding () {
           </div>
           {/* Form Section */ }
           <div className="flex flex-col justify-center gap-6 py-10 px-8 md:w-1/2">
-            <Input name="Display Name" state={ name } setState={ setName } label />
+            <Input name="Display Name" state={ name } setState={ setName } label required />
             <Input name="about" state={ about } setState={ setAbout } label />
             <button
-              className={ `w-full py-3 px-6 rounded-xl font-semibold shadow-lg transition-all duration-200 text-lg mt-2 hover:scale-105 focus:outline-none ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent' : 'bg-light-accent text-light-surface border-light-accent'} border ${loading ? 'opacity-80 cursor-not-allowed' : ''}` }
+              type="button"
+              className={ `w-full py-3 px-6 rounded-xl font-semibold shadow-lg transition-all duration-200 text-lg mt-2 hover:scale-105 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent focus-visible:outline-dark-accent' : 'bg-light-accent text-light-surface border-light-accent focus-visible:outline-light-accent'} border ${loading ? 'opacity-80 cursor-not-allowed' : ''}` }
               onClick={ onboardUserHandler }
               disabled={ loading }
+              aria-label="Create profile"
             >
               { loading ? "Creating profile..." : "Create Profile" }
             </button>
           </div>
         </div>
-      </div>
+      </main>
       <style jsx global>{ `
           @keyframes gradient {
             0%, 100% { background-position: 0% 50%; }

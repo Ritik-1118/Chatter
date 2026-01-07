@@ -267,21 +267,18 @@ function Main () {
       ) }
 
       { !videoCall && !voiceCall && (
-        <div className="flex h-screen w-screen max-h-screen max-w-full overflow-hidden">
-
+        <main className="flex h-screen w-screen max-h-screen max-w-full overflow-hidden" role="main" aria-label="Chat interface">
           <LeftSidebar />
           <ChatList loading={ !userInfo } />
           { currentChatUser && !showSmChatList ? (
-            <>
-              <div className={ `${messagesSearch ? " grid grid-cols-2" : " grid-cols-2"} w-full` }>
-                <Chat isMessagesLoading={messagesLoading} />
-                { messagesSearch && <SearchMessages /> }
-              </div>
-            </>
+            <div className={ `${messagesSearch ? " grid grid-cols-2" : " grid-cols-2"} w-full` }>
+              <Chat isMessagesLoading={messagesLoading} />
+              { messagesSearch && <SearchMessages /> }
+            </div>
           ) : (
             <Empty />
           ) }
-        </div>
+        </main>
       ) }
     </>
   )

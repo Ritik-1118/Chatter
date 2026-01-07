@@ -196,40 +196,68 @@ function MessageBar () {
   return (
     <div className={ `h-20 px-4 flex items-center gap-6 relative ${theme === 'dark' ? 'bg-dark-secondary-background' : 'bg-light-secondary-background'}` }>
       { !showAudioRecorder && (
-        <>
-          <div className=" flex gap-6">
-            <BsEmojiSmile className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } title="Emojis" id="emoji-open" onClick={ handleEmojiModel } />
-            { showEmojiPicker && <div className=" absolute bottom-24 left-16 z-40" ref={ emojiPickerRef }><EmojiPicker onEmojiClick={ handleEmojiClick } theme={ theme } /></div> }
-            <ImAttachment className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } title="Attach files" onClick={ () => setGrabPhoto( true ) } />
+        <form className="flex items-center gap-6 w-full" onSubmit={(e) => { e.preventDefault(); sendMessage(); }}>
+          <div className=" flex gap-3" aria-label="Message tools">
+            <button
+              type="button"
+              id="emoji-open"
+              aria-label="Insert emoji"
+              aria-expanded={showEmojiPicker}
+              onClick={ handleEmojiModel }
+              className={`p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'focus-visible:outline-dark-accent' : 'focus-visible:outline-light-accent'}`}
+            >
+              <BsEmojiSmile className={ `text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } />
+            </button>
+            { showEmojiPicker && <div className=" absolute bottom-24 left-12 z-40" ref={ emojiPickerRef }><EmojiPicker onEmojiClick={ handleEmojiClick } theme={ theme } /></div> }
+            <button
+              type="button"
+              aria-label="Attach a photo"
+              onClick={ () => setGrabPhoto( true ) }
+              className={`p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'focus-visible:outline-dark-accent' : 'focus-visible:outline-light-accent'}`}
+            >
+              <ImAttachment className={ `text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } />
+            </button>
           </div>
           <div className=" w-full rounded-lg h-10 flex items-center">
+            <label htmlFor="message-box" className="sr-only">Type a message</label>
             <textarea
+              id="message-box"
               ref={textareaRef}
               placeholder="Type a message"
-              className={`text-sm focus:outline-none rounded-lg px-5 py-2 w-full resize-none ${theme === 'dark' ? 'bg-dark-surface text-dark-primary-text' : 'bg-light-surface text-light-primary-text'}`}
+              className={`text-sm focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 rounded-lg px-5 py-2 w-full resize-none ${theme === 'dark' ? 'bg-dark-surface text-dark-primary-text focus-visible:outline-dark-accent' : 'bg-light-surface text-light-primary-text focus-visible:outline-light-accent'}`}
               style={{ minHeight: '40px', maxHeight: '120px', lineHeight: '1.5', overflowY: 'hidden', boxSizing: 'border-box' }}
               onChange={ ( e ) => {
                 setMessage( e.target.value );
-                // Auto-expand textarea
                 e.target.style.height = '40px';
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
               } }
               value={ message }
               onKeyDown={handleInputKeyDown}
               rows={1}
+              aria-label="Message input"
             />
           </div>
           <div className=" flex w-10 items-center justify-center">
-            <button>
-              { message?.length ? (
-                <MdSend className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` } title="Send message" onClick={ sendMessage } />
-              ) : (
-                <FaMicrophone className={ `cursor-pointer text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` } title="Record" onClick={ () => setShowAudioRecorder( true ) } />
-              )
-              }
-            </button>
+            { message?.length ? (
+              <button
+                type="submit"
+                aria-label="Send message"
+                className="p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                <MdSend className={ `text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` } />
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label="Record audio message"
+                onClick={ () => setShowAudioRecorder( true ) }
+                className="p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                <FaMicrophone className={ `text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` } />
+              </button>
+            )}
           </div>
-        </>
+        </form>
       ) }
       { grabPhoto && <PhotoPicker onChange={ PhotoPickerChange } /> }
       { showAudioRecorder && <CaptureAudio hide={ setShowAudioRecorder } /> }

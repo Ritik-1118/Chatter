@@ -7,7 +7,7 @@ import axios from "axios";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FcGoogle } from 'react-icons/fc';
 
 function login() {
@@ -16,6 +16,7 @@ function login() {
   const [theme, setTheme] = useState('dark');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const headingRef = useRef(null);
 
   useEffect(() => {
     // Check localStorage or system preference
@@ -33,6 +34,12 @@ function login() {
   useEffect(() => {
     if (userInfo?.id && !newUser) router.push("/");
   }, [userInfo, newUser]);
+
+  useEffect(() => {
+    if (headingRef.current) {
+      headingRef.current.focus();
+    }
+  }, []);
 
   const handleLogin = async () => {
     setError("");
@@ -88,9 +95,10 @@ function login() {
   return (
     <div className={`relative min-h-screen w-full flex items-center justify-center overflow-hidden ${theme === 'dark' ? 'bg-dark-background' : 'bg-light-background'}`}>
       <button
-        className={`absolute top-6 right-6 z-20 px-4 py-2 rounded-full shadow-md font-semibold transition-colors duration-200 focus:outline-none ${theme === 'dark' ? 'bg-dark-surface text-dark-accent border-dark-accent' : 'bg-light-surface text-light-accent border-light-accent'} border`}
+        type="button"
+        className={`absolute top-6 right-6 z-20 px-4 py-2 rounded-full shadow-md font-semibold transition-colors duration-200 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'bg-dark-surface text-dark-accent border-dark-accent focus-visible:outline-dark-accent' : 'bg-light-surface text-light-accent border-light-accent focus-visible:outline-light-accent'} border`}
         onClick={toggleTheme}
-        aria-label="Toggle dark/light mode"
+        aria-label="Toggle dark or light mode"
       >
         {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
       </button>
@@ -98,14 +106,24 @@ function login() {
       <div className={`absolute inset-0 z-0 animate-gradient ${theme === 'dark' ? 'bg-dark-accent' : 'bg-light-accent'} opacity-20`} style={{ filter: 'blur(3px)' }} />
       {/* Theme toggle button can be implemented with a state or system preference, or omitted for now */}
       {/* Glassmorphic Card */}
-      <div className={`relative z-10 flex flex-col items-center justify-center px-8 py-10 rounded-2xl shadow-2xl max-w-sm w-full mx-4 animate-fade-in ring-2 backdrop-blur-2xl ${theme === 'dark' ? 'bg-dark-secondary-background text-dark-primary-text border-dark-divider' : 'bg-light-secondary-background text-light-primary-text border-light-divider'} border`}>
+      <main
+        role="main"
+        className={`relative z-10 flex flex-col items-center justify-center px-8 py-10 rounded-2xl shadow-2xl max-w-sm w-full mx-4 animate-fade-in ring-2 backdrop-blur-2xl ${theme === 'dark' ? 'bg-dark-secondary-background text-dark-primary-text border-dark-divider' : 'bg-light-secondary-background text-light-primary-text border-light-divider'} border`}
+        aria-busy={loading}
+      >
         {/* Logo */}
         <div className="mb-4 flex flex-col items-center">
           <Image src={'/gifs/G1.gif'} alt="Chatter Logo" width={80} height={80} className={`rounded-full shadow-lg border-4 ${theme === 'dark' ? 'border-dark-accent' : 'border-light-accent'}`} />
-          <span className={`mt-3 text-4xl font-extrabold drop-shadow-lg tracking-wide animate-bounce font-mono ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}`}>Chatter</span>
+          <span
+            ref={headingRef}
+            tabIndex={-1}
+            className={`mt-3 text-4xl font-extrabold drop-shadow-lg tracking-wide animate-bounce font-mono ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}`}
+          >
+            Chatter
+          </span>
         </div>
         {error && (
-          <div className={`w-full mb-4 px-4 py-3 rounded-lg text-sm font-medium ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-700'}`} role="alert">
+          <div className={`w-full mb-4 px-4 py-3 rounded-lg text-sm font-medium ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-700'}`} role="alert" aria-live="assertive">
             {error}
           </div>
         )}
@@ -116,16 +134,18 @@ function login() {
         </div>
         {/* Google Login Button */}
         <button
-          className={`flex items-center justify-center gap-4 w-full py-3 px-5 rounded-xl transition-all duration-200 shadow-xl hover:scale-105 focus:outline-none focus:ring-2 group ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent' : 'bg-light-accent text-light-surface border-light-accent'} border`}
+          type="button"
+          className={`flex items-center justify-center gap-4 w-full py-3 px-5 rounded-xl transition-all duration-200 shadow-xl hover:scale-105 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 group ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent focus-visible:outline-dark-accent' : 'bg-light-accent text-light-surface border-light-accent focus-visible:outline-light-accent'} border ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
           onClick={handleLogin}
           disabled={loading}
+          aria-label="Sign in with Google"
         >
           <FcGoogle className={`text-2xl transition-transform duration-200 ${loading ? '' : 'group-hover:scale-110'}`} />
           <span className="text-base font-semibold transition-colors duration-200 tracking-wide">
             {loading ? "Signing in..." : "Login with Google"}
           </span>
         </button>
-      </div>
+      </main>
       {/* Decorative Bubbles */}
       {/* The theme-specific bubble classes were removed as per the edit hint to remove useTheme/ThemeProvider. */}
       {/* The original code had theme-specific bubble classes, but they were tied to colors.theme. */}

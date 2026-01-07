@@ -21,13 +21,16 @@ function ChatList ( { loading = false } ) {
   const skeletonItems = useMemo( () => Array.from( { length: 7 } ), [] );
 
   return (
-    <div className={ `${smWindows && !showSmChatList && "hidden"} bg-panel-header-background sm:w-3/4 md:w-1/2 lg:w-1/3 flex flex-col max-h-screen z-30` }>
+    <nav
+      aria-label="Chat list"
+      className={ `${smWindows && !showSmChatList && "hidden"} bg-panel-header-background sm:w-3/4 md:w-1/2 lg:w-1/3 flex flex-col max-h-screen z-30` }
+    >
       { pageType === "default" && (
         <>
           <ChatListHeader />
           <SearchBar />
           { loading ? (
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" aria-busy="true" aria-label="Loading chats">
               { skeletonItems.map( ( _, idx ) => (
                 <div key={ idx } className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-full skeleton" />
@@ -44,7 +47,7 @@ function ChatList ( { loading = false } ) {
         </>
       ) }
       { pageType === "all-contacts" && <ContactsList /> }
-    </div>
+    </nav>
   )
 }
 

@@ -37,9 +37,15 @@ function ChatLIstItem ( { data, isContactPage = false } ) {
     }
   }
 
+  const isActive = currentChatUser && (currentChatUser._id === data?._id || currentChatUser._id === data?.id || currentChatUser._id === data?.sender || currentChatUser._id === data?.receiver);
+
   return (
-    <div className={ `flex cursor-pointer items-center hover:bg-background-default-hover ${theme === 'dark' ? 'hover:bg-dark-surface' : 'hover:bg-light-surface'}` }
+    <button
+      type="button"
+      className={ `flex cursor-pointer items-center hover:bg-background-default-hover ${theme === 'dark' ? 'hover:bg-dark-surface' : 'hover:bg-light-surface'} w-full text-left` }
       onClick={ handleContactClick }
+      aria-pressed={isActive}
+      aria-label={`Open chat with ${data?.name || 'contact'}`}
     >
       <div className=" min-w-fit px-5 pt-3 pb-1">
         <Avatar type={ "lg" } image={ data?.profilePicture } />
@@ -100,7 +106,7 @@ function ChatLIstItem ( { data, isContactPage = false } ) {
           </div>
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 
