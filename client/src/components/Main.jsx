@@ -24,6 +24,7 @@ function Main () {
       smWindows,
       showSmChatList,
       userInfo,
+      messagesByChat,
       currentChatUser,
       messagesSearch,
       voiceCall,
@@ -97,8 +98,10 @@ function Main () {
           (chatUser &&
             (data.message.receiver === chatUser._id || data.message.receiver === chatUser.id))
         ) {
+          const chatId = chatUser._id || chatUser.id;
           dispatch( {
             type: reducerCases.ADD_MESSAGE,
+            chatId,
             newMessage: {
               ...data.message,
             }
@@ -164,16 +167,16 @@ function Main () {
       } )
       setSocketEvent( true );
     }
-  }, [ socket.current ] );
+  }, [ socketEvent, userInfo ] );
 
   useEffect( () => {
-    // console.log("currentChatUser::::::::::", currentChatUser);
-    const getMessages = async () => {
-      setMessagesLoading( true );
+    const getMessages = async (hasCache) => {
+      // Only show skeleton if no cache
+      setMessagesLoading( !hasCache );
       try {
         await setAxiosAuthToken();
         const { data: { messages }, } = await axios.get( `${GET_MESSAGES_ROUTE}/${userInfo.id}/${currentChatUser._id}` );
-        dispatch( { type: reducerCases.SET_MESSAGES, messages } );
+        dispatch( { type: reducerCases.SET_MESSAGES, chatId: currentChatUser._id, messages } );
       } catch (error) {
         console.log(error);
       } finally {
@@ -181,7 +184,11 @@ function Main () {
       }
     }
     if ( currentChatUser?._id ) {
-      getMessages();
+      const cached = messagesByChat?.[currentChatUser._id];
+      if (cached) {
+        dispatch({ type: reducerCases.SET_MESSAGES, chatId: currentChatUser._id, messages: cached });
+      }
+      getMessages(!!cached);
     } else {
       setMessagesLoading( false );
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import ChatListHeader from "./ChatListHeader";
 import SearchBar from "./SearchBar";
 import List from "./List";
@@ -48,4 +48,4 @@ function ChatList ( { loading = false } ) {
   )
 }
 
-export default ChatList;
+export default memo(ChatList);

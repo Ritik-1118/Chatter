@@ -6,6 +6,7 @@ export const initialState = {
     contactsPage: false,
     currentChatUser:undefined,
     messages: [],
+    messagesByChat: {},
     socket: undefined,
     messagesSearch:false,
     userContacts: [],
@@ -43,22 +44,46 @@ const reducer = (state,action)=>{
                 return {
                     ...state,
                     currentChatUser: action.user,
+                    messages: state.messagesByChat?.[action.user?._id] || [],
                 };
             case reducerCases.SET_MESSAGES:
+                if (!action.chatId) return state;
+                {
+                    const updatedMessagesByChat = {
+                        ...state.messagesByChat,
+                        [action.chatId]: action.messages,
+                    };
                 return {
                     ...state,
-                    messages: action.messages,
+                    messagesByChat: updatedMessagesByChat,
+                    messages:
+                        state.currentChatUser && state.currentChatUser._id === action.chatId
+                            ? action.messages
+                            : state.messages,
                 };
+                }
             case reducerCases.SET_SOCKET:
                 return {
                     ...state,
                     socket: action.socket,
                 };
-            case reducerCases.ADD_MESSAGE:
+            case reducerCases.ADD_MESSAGE: {
+                const { chatId, newMessage } = action;
+                if (!chatId || !newMessage) return state;
+                const existing = state.messagesByChat[chatId] || [];
+                const updatedForChat = [...existing, newMessage];
                 return {
                     ...state,
-                    messages:[...state.messages,action.newMessage],
+                    messagesByChat: {
+                        ...state.messagesByChat,
+                        [chatId]: updatedForChat,
+                    },
+                    messages:
+                        state.currentChatUser && state.currentChatUser._id === chatId
+                            ? updatedForChat
+                            : state.messages,
                 };
+            }
             case reducerCases.SET_MESSAGE_SEARCH:
                 return {
                     ...state,
@@ -152,12 +177,21 @@ const reducer = (state,action)=>{
             case reducerCases.BULK_UPDATE_MESSAGE_STATUS: {
                 const { ids = [], status } = action;
                 if (!status || !Array.isArray(ids) || !ids.length) return state;
-                const updatedMessages = state.messages.map((msg) =>
-                    ids.includes(msg._id) ? { ...msg, messageStatus: status } : msg
+                const updateList = (list = []) =>
+                    list.map((msg) => (ids.includes(msg._id) ? { ...msg, messageStatus: status } : msg));
+
+                const updatedMessagesByChat = Object.entries(state.messagesByChat || {}).reduce(
+                    (acc, [chatId, list]) => ({
+                        ...acc,
+                        [chatId]: updateList(list),
+                    }),
+                    {}
                 );
+
                 return {
                     ...state,
-                    messages: updatedMessages,
+                    messagesByChat: updatedMessagesByChat,
+                    messages: updateList(state.messages),
                 };
             }
         default:

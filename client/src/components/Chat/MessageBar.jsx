@@ -63,8 +63,10 @@ function MessageBar () {
           from: userInfo?.id,
           message: response.data.message,
         } );
+        const chatId = currentChatUser?._id;
         dispatch( {
           type: reducerCases.ADD_MESSAGE,
+          chatId,
           newMessage: {
             ...response.data.message,
           },
@@ -115,8 +117,10 @@ function MessageBar () {
         from: userInfo?.id,
         message: data.message,
       } );
+      const chatId = currentChatUser?._id;
       dispatch( {
         type: reducerCases.ADD_MESSAGE,
+        chatId,
         newMessage: {
           ...data.message,
           messageStatus: "sent",

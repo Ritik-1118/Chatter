@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import ChatHeader from "./ChatHeader";
 import ChatContainer from "./ChatContainer";
 import MessageBar from "./MessageBar";
@@ -36,4 +36,4 @@ function Chat( { isMessagesLoading = false } ) {
     )
 }
 
-export default Chat;
+export default memo(Chat);
