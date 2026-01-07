@@ -50,6 +50,13 @@ function ChatHeader() {
         }})
     };
 
+    const isOnline = () => {
+        const id = currentChatUser?._id || currentChatUser?.id;
+        if (!id) return false;
+        const idStr = id.toString();
+        return onlineUsers.some((u) => u?.toString() === idStr);
+    };
+
     return (
         <div className={`h-16 px-4 py-3 flex justify-between items-center border-b z-10 ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider text-dark-primary-text' : 'bg-light-secondary-background border-light-divider text-light-primary-text'}`}>
             <div className="flex items-center justify-center gap-6">
@@ -57,7 +64,7 @@ function ChatHeader() {
                 <div className="flex flex-col">
                     <span className={`${theme === 'dark' ? 'text-dark-primary-text' : 'text-light-primary-text'}`}>{currentChatUser?.name}</span>
                     <span className={`text-sm ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>
-                        {onlineUsers.includes(currentChatUser._id) ? "online" : "offline"}
+                        {isOnline() ? "online" : "offline"}
                     </span>
                 </div>
             </div>

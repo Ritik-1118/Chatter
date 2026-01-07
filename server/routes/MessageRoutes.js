@@ -5,7 +5,15 @@ import path from "path";
 import crypto from "crypto";
 
 const allowedImages = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-const allowedAudio = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/webm"];
+const allowedAudio = [
+	"audio/mpeg",
+	"audio/mp3",
+	"audio/wav",
+	"audio/ogg",
+	"audio/webm",
+	"video/webm",
+	"application/octet-stream",
+];
 
 const imageStorage = multer.diskStorage({
 	destination: "uploads/images",
@@ -36,7 +44,16 @@ const uploadAudio = multer({
 	storage: audioStorage,
 	limits: { fileSize: 12 * 1024 * 1024 },
 	fileFilter: (_req, file, cb) => {
-		if (allowedAudio.includes(file.mimetype)) return cb(null, true);
+    console.log("Audio MIME type:", file.mimetype);
+		const mime = (file.mimetype || "").split(";")[0];
+		if (allowedAudio.includes(mime)) return cb(null, true);
+
+		// Fallback: infer from extension when mimetype is generic (e.g., application/octet-stream)
+		const ext = (file.originalname || "").toLowerCase();
+		if (ext.endsWith(".webm") || ext.endsWith(".ogg") || ext.endsWith(".mp3") || ext.endsWith(".wav")) {
+			return cb(null, true);
+		}
+
 		return cb(new Error("Invalid audio type"));
 	},
 });

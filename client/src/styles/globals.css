@@ -9,3 +9,72 @@
 .custom-scrollbar::-webkit-scrollbar-thumb{
     background-color: #ffffff3b;
 }
+
+.app-shell {
+    position: relative;
+    min-height: 100vh;
+}
+
+.route-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background: linear-gradient(90deg, #22d3ee, #6366f1, #22d3ee);
+    background-size: 200% 100%;
+    animation: route-progress-stripe 1s linear infinite;
+    z-index: 9999;
+}
+
+@keyframes route-progress-stripe {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(148, 163, 184, 0.25); /* slate-400 base for light */
+    background-image: linear-gradient(90deg, rgba(255,255,255,0.45), rgba(255,255,255,0.15), rgba(255,255,255,0.45));
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.2s ease-in-out infinite;
+}
+
+html.dark .skeleton {
+    background-color: rgba(255, 255, 255, 0.08);
+    background-image: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05), rgba(255,255,255,0.18));
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+:focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 2px;
+}
+html.dark :focus-visible {
+    outline-color: #38bdf8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
