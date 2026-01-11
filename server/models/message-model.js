@@ -5,7 +5,7 @@ const messageSchema = new mongoose.Schema({
     receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     type: { type: String, default: "text" },
     message: String,
-    messageStatus: { type: String, default: "text" },
+    messageStatus: { type: String, default: "sent" },
     createdAt: { type: Date, default: Date.now }
 },{ timestamps: true });
 

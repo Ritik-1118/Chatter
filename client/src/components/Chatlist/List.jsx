@@ -5,6 +5,7 @@ import { GET_INITIAL_CONTACTS_RIUTE } from "@/utils/ApiRoutes";
 import { reducerCases } from "@/context/constants";
 import ChatLIstItem from "./ChatLIstItem";
 import { useTheme } from '@/context/ThemeContext';
+import { setAxiosAuthToken } from "@/utils/authHeaders";
 
 function List() {
     const [{ userInfo,userContacts,filteredContacts },dispatch] = useStateProvider();
@@ -13,6 +14,7 @@ function List() {
     useEffect(() => {
         const getContacts = async () => {
             try {
+                await setAxiosAuthToken();
                 const {data:{users,onlineUsers},} = await axios(`${GET_INITIAL_CONTACTS_RIUTE}/${userInfo.id}`);
                 // console.log("users from List ",users,onlineUsers)
                 dispatch({type:reducerCases.SET_ONLINE_USERS,onlineUsers});

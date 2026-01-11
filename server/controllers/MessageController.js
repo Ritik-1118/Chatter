@@ -1,6 +1,5 @@
 import Message from '../models/message-model.js'; 
 import User from "../models/user-model.js"; 
-import {renameSync} from 'fs';
 
 // import getPrismaInstance from "../utils/PrismaClient.js";
 
@@ -224,11 +223,14 @@ import {renameSync} from 'fs';
 
 export const addMessage = async (req, res, next) => {
     try {
-        console.log(req.body);
         const { message, from, to } = req.body;
         const getUser = onlineUsers.get(to);
         if (message && from && to) {
-            const senderUser = await User.findById(from);
+            const authedUser = await User.findOne({ email: req.user?.email });
+            if (!authedUser || authedUser._id.toString() !== from.toString()) {
+                return res.status(403).send("Forbidden: sender mismatch");
+            }
+            const senderUser = authedUser;
             const receiverUser = await User.findById(to);
             if (!senderUser || !receiverUser) {
                 return res.status(404).send("Sender or receiver user not found.");
@@ -237,7 +239,7 @@ export const addMessage = async (req, res, next) => {
                 message,
                 sender: senderUser._id,
                 receiver: receiverUser._id,
-                messageStatus: getUser ? "Delivered" : "sent",
+                messageStatus: getUser ? "delivered" : "sent",
             });
             await User.findByIdAndUpdate(from, { $push: { sentMessages: newMessage._id } });
             await User.findByIdAndUpdate(to, { $push: { receivedMessages: newMessage._id } });
@@ -254,6 +256,10 @@ export const addMessage = async (req, res, next) => {
 export const getMessages = async (req, res, next) => {
     try {
         const { from, to } = req.params;
+        const authedUser = await User.findOne({ email: req.user?.email });
+        if (!authedUser || authedUser._id.toString() !== from.toString()) {
+            return res.status(403).send("Forbidden: cannot read other users' messages");
+        }
         const messages = await Message.find({
             $or: [
                 { sender: from, receiver: to },
@@ -277,15 +283,15 @@ export const getMessages = async (req, res, next) => {
 export const addImageMessage = async (req, res, next) => {
     try {
         if (req.file) {
-            const date = Date.now();
-            const fileName = "uploads/images/" + date + req.file.originalname;
-            renameSync(req.file.path, fileName);
-
             const { from, to } = req.query;
+            const authedUser = await User.findOne({ email: req.user?.email });
+            if (!authedUser || authedUser._id.toString() !== from.toString()) {
+                return res.status(403).send("Forbidden: sender mismatch");
+            }
             // console.log(from, to)
             if (from && to) {
                 const message = await Message.create({
-                    message: fileName,
+                    message: `uploads/images/${req.file.filename}`,
                     sender: from,
                     receiver: to,
                     type: "image",
@@ -305,14 +311,14 @@ export const addImageMessage = async (req, res, next) => {
 export const addAudioMessage = async (req, res, next) => {
     try {
         if (req.file) {
-            const date = Date.now();
-            const fileName = "uploads/recordings/" + date + req.file.originalname;
-            renameSync(req.file.path, fileName);
-
             const { from, to } = req.query;
+            const authedUser = await User.findOne({ email: req.user?.email });
+            if (!authedUser || authedUser._id.toString() !== from.toString()) {
+                return res.status(403).send("Forbidden: sender mismatch");
+            }
             if (from && to) {
                 const message = await Message.create({
-                    message: fileName,
+                    message: `uploads/recordings/${req.file.filename}`,
                     sender: from,
                     receiver: to,
                     type: "audio",
@@ -332,6 +338,10 @@ export const addAudioMessage = async (req, res, next) => {
 export const getInitialContactsWithMessages = async (req, res, next) => {
     try {
         const userId = req.params.from;
+        const authedUser = await User.findOne({ email: req.user?.email });
+        if (!authedUser || authedUser._id.toString() !== userId.toString()) {
+            return res.status(403).send("Forbidden: cannot access contacts for another user");
+        }
         // console.log("userId = ============",req.params)
         // console.log("userId = ============",req.params.from)
         const user = await User.findById(userId)
