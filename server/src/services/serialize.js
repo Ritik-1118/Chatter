@@ -1,7 +1,7 @@
 import { pathToKey, signedMediaPath } from "./storage.js";
 
 const MEDIA_TYPES = new Set(["image", "audio", "file"]);
-const idOf = (v) => (v == null ? null : String(v._id ?? v));
+const idOf = (v) => (v === null || v === undefined ? null : String(v._id ?? v));
 
 function replyDto(r) {
     if (!r || !r._id) return r ? { _id: String(r), id: String(r) } : null;

@@ -1,5 +1,20 @@
 import AxeBuilder from "@axe-core/playwright";
-import { bubbles, chatHeader, chatItem, createGroup, createUser, db, expect, messageLog, oid, openApp, openChat, sendViaApi, test, typeAndSend } from "./fixtures.js";
+import {
+    bubbles,
+    chatHeader,
+    chatItem,
+    createGroup,
+    createUser,
+    db,
+    expect,
+    messageLog,
+    oid,
+    openApp,
+    openChat,
+    sendViaApi,
+    test,
+    typeAndSend,
+} from "./fixtures.js";
 
 const TEN_DAYS = 10 * 24 * 60 * 60 * 1000;
 const ddmmyyyy = (d) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });

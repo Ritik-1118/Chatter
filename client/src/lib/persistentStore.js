@@ -10,7 +10,7 @@ export function createPersistentStore(key, defaults, { parse = JSON.parse, seria
         try {
             const raw = localStorage.getItem(key);
             const value = raw === null ? undefined : parse(raw);
-            return migrate ? migrate(value) : value ?? defaults;
+            return migrate ? migrate(value) : (value ?? defaults);
         } catch {
             return defaults;
         }

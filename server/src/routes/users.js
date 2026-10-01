@@ -21,7 +21,10 @@ router.get("/", requireProfile, async (req, res) => {
     const { q, limit, offset } = parse(searchSchema, req.query);
     const filter = { _id: { $ne: req.user._id }, deletedAt: null, blockedUsers: { $ne: req.user._id } };
     if (q) filter.name = { $regex: escapeRegex(q), $options: "i" };
-    const users = await User.find(filter, "name about profilePicture").sort({ name: 1, _id: 1 }).skip(offset).limit(limit + 1);
+    const users = await User.find(filter, "name about profilePicture")
+        .sort({ name: 1, _id: 1 })
+        .skip(offset)
+        .limit(limit + 1);
     res.json({ users: users.slice(0, limit).map((u) => u.toPublic()), hasMore: users.length > limit });
 });
 

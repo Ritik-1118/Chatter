@@ -4,10 +4,7 @@ import path from "node:path";
 import { startServer } from "../helpers/harness.js";
 
 // 1x1 transparent PNG
-const PNG = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-    "base64",
-);
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 
 const upload = (server, user, route, field, { blob, filename, query }) => {
     const form = new FormData();

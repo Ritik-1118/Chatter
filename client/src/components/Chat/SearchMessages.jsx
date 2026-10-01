@@ -36,8 +36,12 @@ export default function SearchMessages() {
                     onChange={(e) => setTerm(e.target.value)}
                     className="w-full rounded-lg border border-light-divider bg-light-secondary-background px-3 py-2 text-sm focus:outline-none dark:border-dark-divider dark:bg-dark-secondary-background"
                 />
-                {!term && <p className="mt-6 text-center text-sm text-light-secondary-text dark:text-dark-secondary-text">Search for messages with {chat?.name}</p>}
-                {term && !results.length && <p className="mt-6 text-center text-sm text-light-secondary-text dark:text-dark-secondary-text">No messages found.</p>}
+                {!term && (
+                    <p className="mt-6 text-center text-sm text-light-secondary-text dark:text-dark-secondary-text">Search for messages with {chat?.name}</p>
+                )}
+                {term && !results.length && (
+                    <p className="mt-6 text-center text-sm text-light-secondary-text dark:text-dark-secondary-text">No messages found.</p>
+                )}
             </div>
             <ul className="custom-scrollbar flex-1 overflow-auto" aria-label="Search results">
                 {results.map((m) => (

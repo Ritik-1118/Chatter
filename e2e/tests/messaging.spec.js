@@ -1,4 +1,22 @@
-import { api, bubble, bubbles, chatHeader, chatItem, chatStatus, composer, createUser, db, expect, messageAction, oid, openApp, openChat, sendViaApi, test, typeAndSend } from "./fixtures.js";
+import {
+    api,
+    bubble,
+    bubbles,
+    chatHeader,
+    chatItem,
+    chatStatus,
+    composer,
+    createUser,
+    db,
+    expect,
+    messageAction,
+    oid,
+    openApp,
+    openChat,
+    sendViaApi,
+    test,
+    typeAndSend,
+} from "./fixtures.js";
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 
@@ -215,7 +233,10 @@ test.describe("Messaging", () => {
         await openChat(a, bob.name);
         await openChat(b, alice.name);
         await typeAndSend(a, "see https://example.com/page please");
-        const link = b.getByTestId("message-text").filter({ hasText: "see https://example.com/page please" }).getByRole("link", { name: "https://example.com/page" });
+        const link = b
+            .getByTestId("message-text")
+            .filter({ hasText: "see https://example.com/page please" })
+            .getByRole("link", { name: "https://example.com/page" });
         await expect(link).toHaveAttribute("target", "_blank");
         await expect(link).toHaveAttribute("rel", /noopener/);
     });

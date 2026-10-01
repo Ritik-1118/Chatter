@@ -23,7 +23,7 @@ const DELETE_WINDOW_MS = 60 * 60 * 1000;
 function ReplyQuote({ reply, chat, me }) {
     const [, dispatch] = useStateProvider();
     if (!reply) return null;
-    const author = reply.sender === me ? "You" : chat.participants?.find((p) => p.id === reply.sender)?.name ?? chat.name;
+    const author = reply.sender === me ? "You" : (chat.participants?.find((p) => p.id === reply.sender)?.name ?? chat.name);
     return (
         <button
             type="button"
@@ -31,7 +31,11 @@ function ReplyQuote({ reply, chat, me }) {
             className="mb-1 block w-full rounded border-l-4 border-light-accent bg-black/5 px-2 py-1 text-left text-xs dark:border-dark-accent dark:bg-white/10"
         >
             <span className="block font-semibold text-light-accent dark:text-dark-accent">{author}</span>
-            <span className="line-clamp-2 opacity-80">{reply.deleted ? "This message was deleted" : reply.message || (reply.type === "image" ? "📷 Photo" : reply.type === "audio" ? "🎤 Voice message" : "Attachment")}</span>
+            <span className="line-clamp-2 opacity-80">
+                {reply.deleted
+                    ? "This message was deleted"
+                    : reply.message || (reply.type === "image" ? "📷 Photo" : reply.type === "audio" ? "🎤 Voice message" : "Attachment")}
+            </span>
         </button>
     );
 }
@@ -68,7 +72,12 @@ export default function MessageBubble({ message, chat, me, showSender, highlight
         return (
             <div id={`msg-${message._id}`} className="my-1 flex justify-center">
                 <span className="flex items-center gap-2 rounded-md bg-light-surface px-3 py-1 text-center text-xs text-light-secondary-text shadow-sm dark:bg-dark-surface dark:text-dark-secondary-text">
-                    {message.type === "call" && <FaPhoneAlt className={message.message.startsWith("Missed") && !mine ? "text-light-error dark:text-dark-error" : ""} aria-hidden="true" />}
+                    {message.type === "call" && (
+                        <FaPhoneAlt
+                            className={message.message.startsWith("Missed") && !mine ? "text-light-error dark:text-dark-error" : ""}
+                            aria-hidden="true"
+                        />
+                    )}
                     {message.message}
                     {message.type === "call" && <span className="opacity-70">{formatClock(message.createdAt)}</span>}
                 </span>
@@ -89,30 +98,34 @@ export default function MessageBubble({ message, chat, me, showSender, highlight
             dispatch({ type: reducerCases.UPDATE_MESSAGE, message: updated });
         })();
     const age = menu ? menu.at - new Date(message.createdAt).getTime() : 0;
-    const actions = menu?.kind === "react"
-        ? QUICK_REACTIONS.map((emoji) => ({ name: emoji, callback: () => react(emoji) }))
-        : [
-              { name: "Reply", callback: () => dispatch({ type: reducerCases.SET_REPLY, chatId: chat.id, message }) },
-              { name: "React", callback: () => setTimeout(() => setMenu({ kind: "react", at: Date.now() }), 0) },
-              message.type === "text" && { name: "Copy", callback: () => navigator.clipboard?.writeText(message.message).then(() => toast("Copied")) },
-              mine && message.type === "text" && age < EDIT_WINDOW_MS && { name: "Edit", callback: () => dispatch({ type: reducerCases.SET_EDITING, chatId: chat.id, message }) },
-              {
-                  name: "Delete for me",
-                  danger: true,
-                  callback: run(async () => {
-                      await api.deleteMessage(message._id, "me");
-                      dispatch({ type: reducerCases.REMOVE_MESSAGE, chatId: chat.id, messageId: message._id });
-                  }),
-              },
-              mine && age < DELETE_WINDOW_MS && {
-                  name: "Delete for everyone",
-                  danger: true,
-                  callback: run(async () => {
-                      if (!window.confirm("Delete this message for everyone?")) return;
-                      dispatch({ type: reducerCases.UPDATE_MESSAGE, message: await api.deleteMessage(message._id, "everyone") });
-                  }),
-              },
-          ];
+    const actions =
+        menu?.kind === "react"
+            ? QUICK_REACTIONS.map((emoji) => ({ name: emoji, callback: () => react(emoji) }))
+            : [
+                  { name: "Reply", callback: () => dispatch({ type: reducerCases.SET_REPLY, chatId: chat.id, message }) },
+                  { name: "React", callback: () => setTimeout(() => setMenu({ kind: "react", at: Date.now() }), 0) },
+                  message.type === "text" && { name: "Copy", callback: () => navigator.clipboard?.writeText(message.message).then(() => toast("Copied")) },
+                  mine &&
+                      message.type === "text" &&
+                      age < EDIT_WINDOW_MS && { name: "Edit", callback: () => dispatch({ type: reducerCases.SET_EDITING, chatId: chat.id, message }) },
+                  {
+                      name: "Delete for me",
+                      danger: true,
+                      callback: run(async () => {
+                          await api.deleteMessage(message._id, "me");
+                          dispatch({ type: reducerCases.REMOVE_MESSAGE, chatId: chat.id, messageId: message._id });
+                      }),
+                  },
+                  mine &&
+                      age < DELETE_WINDOW_MS && {
+                          name: "Delete for everyone",
+                          danger: true,
+                          callback: run(async () => {
+                              if (!window.confirm("Delete this message for everyone?")) return;
+                              dispatch({ type: reducerCases.UPDATE_MESSAGE, message: await api.deleteMessage(message._id, "everyone") });
+                          }),
+                      },
+              ];
 
     const authorName = chat.participants?.find((p) => p.id === message.sender)?.name ?? "Former member";
     const bubbleColor = mine
@@ -166,7 +179,9 @@ export default function MessageBubble({ message, chat, me, showSender, highlight
                     <button
                         type="button"
                         className="mt-1 text-xs font-semibold text-light-error underline dark:text-dark-error"
-                        onClick={() => sendOutgoing(dispatch, { chatId: chat.id, me, payload: message.retry, onError: (e) => toast(e.message, { type: "error" }) })}
+                        onClick={() =>
+                            sendOutgoing(dispatch, { chatId: chat.id, me, payload: message.retry, onError: (e) => toast(e.message, { type: "error" }) })
+                        }
                     >
                         Retry
                     </button>

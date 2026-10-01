@@ -63,9 +63,19 @@ export default function SettingModal({ onClose }) {
         <Modal title="Settings" onClose={onClose} closeLabel="Close settings modal">
             <div className="flex flex-col gap-5">
                 <Toggle label="Dark mode" checked={theme === "dark"} onChange={(on) => setTheme(on ? "dark" : "light")} />
-                <Toggle label="Notifications" description="Show alerts for new messages and calls while Chatter is in the background" checked={settings.notifications} onChange={toggleNotifications} />
+                <Toggle
+                    label="Notifications"
+                    description="Show alerts for new messages and calls while Chatter is in the background"
+                    checked={settings.notifications}
+                    onChange={toggleNotifications}
+                />
                 <Toggle label="Sounds" description="Ringtone for incoming calls" checked={settings.sounds} onChange={(on) => updateSettings({ sounds: on })} />
-                <Toggle label="Send on Enter" description="Shift+Enter adds a new line. Ctrl/⌘+Enter always sends." checked={settings.enterToSend} onChange={(on) => updateSettings({ enterToSend: on })} />
+                <Toggle
+                    label="Send on Enter"
+                    description="Shift+Enter adds a new line. Ctrl/⌘+Enter always sends."
+                    checked={settings.enterToSend}
+                    onChange={(on) => updateSettings({ enterToSend: on })}
+                />
                 <dl className="grid grid-cols-2 gap-y-1 text-sm">
                     <dt>Camera</dt>
                     <dd className="text-right text-light-secondary-text dark:text-dark-secondary-text">{PERMISSION_TEXT[camera]}</dd>
@@ -75,12 +85,22 @@ export default function SettingModal({ onClose }) {
                 <hr className="border-light-divider dark:border-dark-divider" />
                 {confirmDelete ? (
                     <div className="flex flex-col gap-2 text-sm">
-                        <p role="alert">This permanently removes your profile and you will be signed out. Your past messages will show as from “Deleted user”.</p>
+                        <p role="alert">
+                            This permanently removes your profile and you will be signed out. Your past messages will show as from “Deleted user”.
+                        </p>
                         <div className="flex gap-2">
-                            <button type="button" className="flex-1 rounded-lg border border-light-divider py-2 dark:border-dark-divider" onClick={() => setConfirmDelete(false)}>
+                            <button
+                                type="button"
+                                className="flex-1 rounded-lg border border-light-divider py-2 dark:border-dark-divider"
+                                onClick={() => setConfirmDelete(false)}
+                            >
                                 Cancel
                             </button>
-                            <button type="button" className="flex-1 rounded-lg bg-light-error py-2 font-semibold text-white dark:bg-dark-error" onClick={deleteAccount}>
+                            <button
+                                type="button"
+                                className="flex-1 rounded-lg bg-light-error py-2 font-semibold text-white dark:bg-dark-error"
+                                onClick={deleteAccount}
+                            >
                                 Delete my account
                             </button>
                         </div>

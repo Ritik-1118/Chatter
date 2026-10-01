@@ -38,7 +38,10 @@ export default function Modal({ title, onClose, children, closeLabel, className 
     }, [onClose]);
 
     return createPortal(
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+        <div
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+        >
             <div
                 ref={ref}
                 role="dialog"

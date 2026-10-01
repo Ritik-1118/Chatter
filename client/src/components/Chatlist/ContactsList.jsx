@@ -54,8 +54,16 @@ export default function ContactsList() {
                     </span>
                     New group
                 </button>
-                {loading && <p className="px-5 py-3 text-sm text-light-secondary-text dark:text-dark-secondary-text" role="status">Loading contacts…</p>}
-                {error && <p className="px-5 py-3 text-sm text-light-error dark:text-dark-error" role="alert">{error}</p>}
+                {loading && (
+                    <p className="px-5 py-3 text-sm text-light-secondary-text dark:text-dark-secondary-text" role="status">
+                        Loading contacts…
+                    </p>
+                )}
+                {error && (
+                    <p className="px-5 py-3 text-sm text-light-error dark:text-dark-error" role="alert">
+                        {error}
+                    </p>
+                )}
                 {!loading && !error && !users.length && (
                     <p className="px-5 py-3 text-sm text-light-secondary-text dark:text-dark-secondary-text">No contacts found.</p>
                 )}

@@ -110,7 +110,9 @@ export async function openApp(page) {
 }
 
 export async function openChat(page, name) {
-    await chatList(page).getByRole("button", { name: `Open chat with ${name}`, exact: true }).click();
+    await chatList(page)
+        .getByRole("button", { name: `Open chat with ${name}`, exact: true })
+        .click();
     await expect(chatHeader(page)).toContainText(name);
 }
 

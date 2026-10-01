@@ -21,7 +21,6 @@ export function notFoundHandler(req, _res, next) {
 }
 
 // Maps every error to a JSON body of the form { error: { code, message } }.
-// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, _next) {
     let status = 500;
     let code = "internal_error";

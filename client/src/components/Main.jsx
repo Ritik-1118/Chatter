@@ -41,7 +41,11 @@ export default function Main() {
         return (
             <main className="flex h-screen flex-col items-center justify-center gap-4 bg-light-background text-light-primary-text dark:bg-dark-background dark:text-dark-primary-text">
                 <p role="alert">Couldn&apos;t load your account: {bootError}</p>
-                <button type="button" onClick={retry} className="rounded-lg bg-light-accent px-4 py-2 font-semibold text-white dark:bg-dark-accent dark:text-dark-surface">
+                <button
+                    type="button"
+                    onClick={retry}
+                    className="rounded-lg bg-light-accent px-4 py-2 font-semibold text-white dark:bg-dark-accent dark:text-dark-surface"
+                >
                     Retry
                 </button>
             </main>

@@ -13,7 +13,10 @@ export function isPublicAddress(address) {
     if (net.isIPv4(address)) {
         const [a, b] = address.split(".").map(Number);
         return !(
-            a === 0 || a === 10 || a === 127 || a >= 224 ||
+            a === 0 ||
+            a === 10 ||
+            a === 127 ||
+            a >= 224 ||
             (a === 100 && b >= 64 && b <= 127) ||
             (a === 169 && b === 254) ||
             (a === 172 && b >= 16 && b <= 31) ||
@@ -24,8 +27,17 @@ export function isPublicAddress(address) {
     if (net.isIPv6(address)) {
         const v = address.toLowerCase();
         if (v.startsWith("::ffff:")) return isPublicAddress(v.slice(7));
-        return !(v === "::" || v === "::1" || v.startsWith("fc") || v.startsWith("fd") || v.startsWith("fe8") ||
-            v.startsWith("fe9") || v.startsWith("fea") || v.startsWith("feb") || v.startsWith("ff"));
+        return !(
+            v === "::" ||
+            v === "::1" ||
+            v.startsWith("fc") ||
+            v.startsWith("fd") ||
+            v.startsWith("fe8") ||
+            v.startsWith("fe9") ||
+            v.startsWith("fea") ||
+            v.startsWith("feb") ||
+            v.startsWith("ff")
+        );
     }
     return false;
 }
@@ -45,39 +57,41 @@ function fetchHtml(url, redirects = 3) {
         if (!["http:", "https:"].includes(u.protocol)) return reject(new Error("bad protocol"));
         if (u.port && !["80", "443"].includes(u.port)) return reject(new Error("bad port"));
         const lib = u.protocol === "https:" ? https : http;
-        const req = lib.get(
-            u,
-            { lookup: safeLookup, timeout: TIMEOUT_MS, headers: { "User-Agent": "ChatterLinkPreview/1.0", Accept: "text/html" } },
-            (res) => {
-                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                    res.resume();
-                    if (!redirects) return reject(new Error("too many redirects"));
-                    return resolve(fetchHtml(new URL(res.headers.location, u).toString(), redirects - 1));
-                }
-                if (res.statusCode !== 200 || !/text\/html/i.test(res.headers["content-type"] || "")) {
-                    res.resume();
-                    return reject(new Error("not html"));
-                }
-                let size = 0;
-                const chunks = [];
-                res.on("data", (c) => {
-                    size += c.length;
-                    if (size > MAX_BYTES) {
-                        req.destroy();
-                        resolve(Buffer.concat(chunks).toString("utf8"));
-                    } else chunks.push(c);
-                });
-                res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-                res.on("error", reject);
-            },
-        );
+        const req = lib.get(u, { lookup: safeLookup, timeout: TIMEOUT_MS, headers: { "User-Agent": "ChatterLinkPreview/1.0", Accept: "text/html" } }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                res.resume();
+                if (!redirects) return reject(new Error("too many redirects"));
+                return resolve(fetchHtml(new URL(res.headers.location, u).toString(), redirects - 1));
+            }
+            if (res.statusCode !== 200 || !/text\/html/i.test(res.headers["content-type"] || "")) {
+                res.resume();
+                return reject(new Error("not html"));
+            }
+            let size = 0;
+            const chunks = [];
+            res.on("data", (c) => {
+                size += c.length;
+                if (size > MAX_BYTES) {
+                    req.destroy();
+                    resolve(Buffer.concat(chunks).toString("utf8"));
+                } else chunks.push(c);
+            });
+            res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+            res.on("error", reject);
+        });
         req.on("timeout", () => req.destroy(new Error("timeout")));
         req.on("error", reject);
     });
 }
 
 const decode = (s) =>
-    s?.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+    s
+        ?.replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
 
 function meta(html, prop) {
     const re = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*>`, "i");

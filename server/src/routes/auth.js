@@ -15,7 +15,11 @@ import { parse } from "../validate.js";
 
 const router = Router();
 
-const name = z.string({ error: "Display name is required" }).trim().min(3, "Display name must be 3-50 characters").max(50, "Display name must be 3-50 characters");
+const name = z
+    .string({ error: "Display name is required" })
+    .trim()
+    .min(3, "Display name must be 3-50 characters")
+    .max(50, "Display name must be 3-50 characters");
 const about = z.string().trim().max(140, "About must be at most 140 characters");
 
 const onboardSchema = z.object({ name, about: about.optional().default(""), image: z.string().optional() });

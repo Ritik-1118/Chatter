@@ -26,13 +26,39 @@ const AUDIO_TYPES = {
     "video/mp4": "m4a",
 };
 const FILE_EXTS = new Set([
-    "pdf", "zip", "docx", "xlsx", "pptx", "odt", "ods", "odp", "rtf", "7z", "rar", "gz", "epub",
-    "mp4", "mov", "webm", "png", "jpg", "webp", "gif", "mp3", "m4a", "ogg", "wav",
+    "pdf",
+    "zip",
+    "docx",
+    "xlsx",
+    "pptx",
+    "odt",
+    "ods",
+    "odp",
+    "rtf",
+    "7z",
+    "rar",
+    "gz",
+    "epub",
+    "mp4",
+    "mov",
+    "webm",
+    "png",
+    "jpg",
+    "webp",
+    "gif",
+    "mp3",
+    "m4a",
+    "ogg",
+    "wav",
 ]);
 const TEXT_EXTS = new Set(["txt", "csv", "md", "json", "log"]);
 
 const unsupported = (what) => new HttpError(415, "unsupported_media_type", `Unsupported ${what} type`);
-const baseMime = (m) => String(m || "").split(";")[0].trim().toLowerCase();
+const baseMime = (m) =>
+    String(m || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
 const isEbml = (buf) => buf.length >= 4 && buf.readUInt32BE(0) === 0x1a45dfa3;
 
 // Images are re-encoded to strip metadata (EXIF/GPS) and fix orientation.
@@ -59,7 +85,10 @@ export async function processAudio(buffer, declaredMime) {
 }
 
 export async function processFile(buffer, originalName) {
-    const nameExt = String(originalName || "").split(".").pop().toLowerCase();
+    const nameExt = String(originalName || "")
+        .split(".")
+        .pop()
+        .toLowerCase();
     const detected = await fileTypeFromBuffer(buffer);
     if (detected) {
         if (!FILE_EXTS.has(detected.ext)) throw unsupported("file");
@@ -91,4 +120,7 @@ export function decodeDataUrl(value) {
 }
 
 export const sanitizeFileName = (name) =>
-    String(name || "file").replace(/[^\w.\- ()]/g, "_").replace(/^\.+/, "").slice(0, 120) || "file";
+    String(name || "file")
+        .replace(/[^\w.\- ()]/g, "_")
+        .replace(/^\.+/, "")
+        .slice(0, 120) || "file";

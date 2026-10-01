@@ -34,8 +34,7 @@ const pageSchema = z.object({
     before: objectId("before").optional(),
 });
 
-const notifyChanged = (ids, conversationId) =>
-    realtime.emitToUsers(ids, "conversation-updated", { conversationId: String(conversationId) });
+const notifyChanged = (ids, conversationId) => realtime.emitToUsers(ids, "conversation-updated", { conversationId: String(conversationId) });
 
 async function loadGroupAsAdmin(user, id) {
     const conv = await loadConversationFor(user._id, assertObjectId(id, "conversation id"));
@@ -124,9 +123,7 @@ router.patch("/:id/members/:userId", async (req, res) => {
     const userId = assertObjectId(req.params.userId, "user id");
     const { admin } = parse(z.object({ admin: z.boolean() }), req.body);
     if (!conv.participants.some((p) => String(p) === userId)) throw notFound("Not a member of this group");
-    conv.admins = admin
-        ? [...new Set([...conv.admins.map(String), userId])]
-        : conv.admins.filter((a) => String(a) !== userId);
+    conv.admins = admin ? [...new Set([...conv.admins.map(String), userId])] : conv.admins.filter((a) => String(a) !== userId);
     if (!conv.admins.length) throw badRequest("A group needs at least one admin");
     await conv.save();
     notifyChanged(conv.participants, conv._id);

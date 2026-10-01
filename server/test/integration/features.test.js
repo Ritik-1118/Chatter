@@ -230,7 +230,11 @@ describe("Conversations, groups and message features", () => {
             expect((await json(server, bob, "POST", "/api/messages/add-message", { to: alice.id, message: "hey" })).status).to.equal(403);
             expect((await json(server, alice, "POST", "/api/messages/add-message", { to: bob.id, message: "hey" })).status).to.equal(403);
             const contacts = await json(server, bob, "GET", "/api/auth/get-contacts");
-            expect(Object.values(contacts.data.users).flat().map((u) => u.id)).to.not.include(alice.id);
+            expect(
+                Object.values(contacts.data.users)
+                    .flat()
+                    .map((u) => u.id),
+            ).to.not.include(alice.id);
 
             track(await server.connect(alice));
             const bobSocket = track(await server.connect(bob));

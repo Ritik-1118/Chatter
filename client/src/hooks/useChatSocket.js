@@ -86,7 +86,9 @@ export default function useChatSocket(state, dispatch) {
                 if (isOpen && visible && message.type !== "system") emit("read-message", { messageIds: [message._id] });
                 if ((!isOpen || !visible) && prefs.notifications && message.type !== "system") {
                     showNotification(chat?.name || "New message", {
-                        body: chat?.isGroup ? `${chat.participants?.find((p) => p.id === message.sender)?.name ?? ""}: ${previewText(message)}` : previewText(message),
+                        body: chat?.isGroup
+                            ? `${chat.participants?.find((p) => p.id === message.sender)?.name ?? ""}: ${previewText(message)}`
+                            : previewText(message),
                         icon: assetUrl(chat?.profilePicture),
                         tag: message.conversationId,
                         onClick: () => dispatch({ type: reducerCases.OPEN_CHAT, chatId: message.conversationId }),
@@ -96,15 +98,17 @@ export default function useChatSocket(state, dispatch) {
             "msg-ack": ({ message, tempId }) => message && dispatch({ type: reducerCases.RECEIVE_MESSAGE, message, tempId }),
             "msg-updated": ({ message }) => message && dispatch({ type: reducerCases.UPDATE_MESSAGE, message }),
             "msg-removed": ({ conversationId, messageId }) => dispatch({ type: reducerCases.REMOVE_MESSAGE, chatId: conversationId, messageId }),
-            delivered: ({ messageIds, messageId }) =>
-                dispatch({ type: reducerCases.SET_MESSAGE_STATUS, ids: messageIds ?? [messageId], status: "delivered" }),
+            delivered: ({ messageIds, messageId }) => dispatch({ type: reducerCases.SET_MESSAGE_STATUS, ids: messageIds ?? [messageId], status: "delivered" }),
             read: ({ messageIds }) => dispatch({ type: reducerCases.SET_MESSAGE_STATUS, ids: messageIds, status: "read" }),
 
             typing: ({ conversationId, userId: uid, name }) => {
                 dispatch({ type: reducerCases.SET_TYPING, chatId: conversationId, userId: uid, name, typing: true });
                 const key = `${conversationId}:${uid}`;
                 clearTimeout(typingTimers.get(key));
-                typingTimers.set(key, setTimeout(() => clearTyping(conversationId, uid), TYPING_TTL_MS));
+                typingTimers.set(
+                    key,
+                    setTimeout(() => clearTyping(conversationId, uid), TYPING_TTL_MS),
+                );
             },
             "stop-typing": ({ conversationId, userId: uid }) => clearTyping(conversationId, uid),
 
@@ -133,7 +137,12 @@ export default function useChatSocket(state, dispatch) {
                 if (current !== undefined && roomId !== undefined && String(current) !== String(roomId)) return;
                 stopRingtone();
                 dispatch({ type: reducerCases.END_CALL });
-                const messages = { declined: "Call declined", "no-answer": "No answer", cancelled: "Call cancelled", "answered-elsewhere": "Answered on another device" };
+                const messages = {
+                    declined: "Call declined",
+                    "no-answer": "No answer",
+                    cancelled: "Call cancelled",
+                    "answered-elsewhere": "Answered on another device",
+                };
                 if (messages[reason]) toast(messages[reason]);
             },
             "call-unavailable": ({ reason }) => {

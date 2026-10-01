@@ -20,7 +20,11 @@ export default function ChatListHeader() {
             <Avatar type="sm" image={userInfo?.profilePicture} alt={userInfo?.name ? `${userInfo.name}'s avatar` : "Your avatar"} />
             <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <IconButton label="New chat" className="text-light-accent dark:text-dark-accent" onClick={() => dispatch({ type: reducerCases.SET_PANEL, panel: "contacts" })}>
+                <IconButton
+                    label="New chat"
+                    className="text-light-accent dark:text-dark-accent"
+                    onClick={() => dispatch({ type: reducerCases.SET_PANEL, panel: "contacts" })}
+                >
                     <TbMessagePlus aria-hidden="true" />
                 </IconButton>
                 <IconButton

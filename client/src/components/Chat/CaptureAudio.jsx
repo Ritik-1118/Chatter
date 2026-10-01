@@ -91,7 +91,10 @@ export default function CaptureAudio({ onClose, onSend }) {
             <IconButton label="Cancel recording" onClick={onClose}>
                 <FaTrash aria-hidden="true" />
             </IconButton>
-            <div className="flex min-w-[200px] items-center justify-center gap-3 rounded-full bg-light-surface px-4 py-2 text-base dark:bg-dark-surface" role="status">
+            <div
+                className="flex min-w-[200px] items-center justify-center gap-3 rounded-full bg-light-surface px-4 py-2 text-base dark:bg-dark-surface"
+                role="status"
+            >
                 {phase === "error" && <span className="text-sm text-light-error dark:text-dark-error">{error}</span>}
                 {phase === "starting" && <span className="text-sm">Starting microphone…</span>}
                 {phase === "recording" && <span className="animate-pulse text-red-500">Recording {formatDuration(seconds)}</span>}

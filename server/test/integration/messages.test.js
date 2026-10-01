@@ -132,11 +132,7 @@ describe("Messages API (/api/messages)", () => {
         });
 
         it("[G-03] supports cursor pagination (limit/before) for long histories", async () => {
-            const res = await server.request(
-                "GET",
-                `/api/messages/get-messages/${dave.id}/${erin.id}?limit=2`,
-                { user: dave },
-            );
+            const res = await server.request("GET", `/api/messages/get-messages/${dave.id}/${erin.id}?limit=2`, { user: dave });
             expect(res.data.messages).to.have.length(2);
             expect(res.data.messages.map((m) => m.message)).to.deep.equal(["m2", "m3"]);
         });

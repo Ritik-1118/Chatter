@@ -52,7 +52,10 @@ export default function NewGroup() {
                     {selected.length > 0 && (
                         <ul className="flex flex-wrap gap-2 px-4 pt-3" aria-label="Selected members">
                             {selected.map((u) => (
-                                <li key={u.id} className="flex items-center gap-1 rounded-full bg-light-secondary-background py-1 pl-1 pr-2 text-sm dark:bg-dark-secondary-background">
+                                <li
+                                    key={u.id}
+                                    className="flex items-center gap-1 rounded-full bg-light-secondary-background py-1 pl-1 pr-2 text-sm dark:bg-dark-secondary-background"
+                                >
                                     <Avatar type="xs" image={u.profilePicture} alt="" />
                                     {u.name}
                                     <button type="button" aria-label={`Remove ${u.name}`} onClick={() => toggle(u)}>
@@ -64,7 +67,11 @@ export default function NewGroup() {
                     )}
                     <UserSearchInput value={term} onChange={setTerm} placeholder="Search people to add" />
                     <ul className="custom-scrollbar flex-auto overflow-auto" aria-label="People">
-                        {loading && <li className="px-5 py-3 text-sm" role="status">Loading…</li>}
+                        {loading && (
+                            <li className="px-5 py-3 text-sm" role="status">
+                                Loading…
+                            </li>
+                        )}
                         {users.map((u) => {
                             const checked = selected.some((x) => x.id === u.id);
                             return (

@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-.custom-scrollbar::-webkit-scrollbar{
+.custom-scrollbar::-webkit-scrollbar {
     height: 8px !important;
     width: 8px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb{
+.custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: #ffffff3b;
 }
 
@@ -28,27 +28,35 @@
 }
 
 @keyframes route-progress-stripe {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .skeleton {
     position: relative;
     overflow: hidden;
     background-color: rgba(148, 163, 184, 0.25); /* slate-400 base for light */
-    background-image: linear-gradient(90deg, rgba(255,255,255,0.45), rgba(255,255,255,0.15), rgba(255,255,255,0.45));
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.45));
     background-size: 200% 100%;
     animation: skeleton-loading 1.2s ease-in-out infinite;
 }
 
 html.dark .skeleton {
     background-color: rgba(255, 255, 255, 0.08);
-    background-image: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05), rgba(255,255,255,0.18));
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.18));
 }
 
 @keyframes skeleton-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .sr-only {
@@ -71,7 +79,9 @@ html.dark :focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;

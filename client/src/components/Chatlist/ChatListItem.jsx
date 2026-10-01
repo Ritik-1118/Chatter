@@ -9,7 +9,12 @@ function Preview({ chat, me, typing }) {
     if (typing) return <span className="truncate italic text-unread">{typing}</span>;
     const m = chat.lastMessage;
     if (!m) return <span className="truncate">{chat.isGroup ? "Group created" : " "}</span>;
-    const author = chat.isGroup && m.sender && m.type !== "system" ? (m.sender === me ? "You: " : `${chat.participants?.find((p) => p.id === m.sender)?.name?.split(" ")[0] ?? ""}: `) : "";
+    const author =
+        chat.isGroup && m.sender && m.type !== "system"
+            ? m.sender === me
+                ? "You: "
+                : `${chat.participants?.find((p) => p.id === m.sender)?.name?.split(" ")[0] ?? ""}: `
+            : "";
     let body = m.message;
     let Icon = null;
     if (m.deleted) body = "This message was deleted";
@@ -56,7 +61,10 @@ export default function ChatListItem({ chat }) {
                 <span className="flex items-center justify-between gap-2 text-sm text-light-secondary-text dark:text-dark-secondary-text">
                     <Preview chat={chat} me={userInfo?.id} typing={typingLabel} />
                     {unread > 0 && (
-                        <span className="min-w-[1.25rem] shrink-0 rounded-full bg-unread px-1.5 text-center text-xs font-semibold text-white" aria-label={`${unread} unread`}>
+                        <span
+                            className="min-w-[1.25rem] shrink-0 rounded-full bg-unread px-1.5 text-center text-xs font-semibold text-white"
+                            aria-label={`${unread} unread`}
+                        >
                             {unread}
                         </span>
                     )}

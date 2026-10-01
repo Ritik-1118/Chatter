@@ -57,30 +57,26 @@ export async function startServer({ env = {}, port } = {}) {
     // Run in a scratch cwd so uploads never land in the repo.
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "chatter-server-"));
     const logs = [];
-    const child = spawn(
-        process.execPath,
-        ["--import", path.join(here, "fake-firebase.js"), path.join(serverRoot, "index.js")],
-        {
-            cwd,
-            env: {
-                ...process.env,
-                PORT: String(port),
-                MONGOURL: mongoUri,
-                FIREBASE_PROJECT_ID: "chatter-test",
-                FIREBASE_CLIENT_EMAIL: "test@chatter-test.iam.gserviceaccount.com",
-                FIREBASE_PRIVATE_KEY: privateKey,
-                ZEGO_APP_ID,
-                ZEGO_SERVER_SECRET: ZEGO_SECRET,
-                MEDIA_URL_SECRET: "test-media-secret-0123456789abcdef0123",
-                LOG_LEVEL: "warn",
-                RATE_LIMIT_MAX: "100000",
-                RATE_LIMIT_UPLOAD_MAX: "100000",
-                SOCKET_EVENTS_PER_10S: "100000",
-                ...env,
-            },
-            stdio: ["ignore", "pipe", "pipe"],
+    const child = spawn(process.execPath, ["--import", path.join(here, "fake-firebase.js"), path.join(serverRoot, "index.js")], {
+        cwd,
+        env: {
+            ...process.env,
+            PORT: String(port),
+            MONGOURL: mongoUri,
+            FIREBASE_PROJECT_ID: "chatter-test",
+            FIREBASE_CLIENT_EMAIL: "test@chatter-test.iam.gserviceaccount.com",
+            FIREBASE_PRIVATE_KEY: privateKey,
+            ZEGO_APP_ID,
+            ZEGO_SERVER_SECRET: ZEGO_SECRET,
+            MEDIA_URL_SECRET: "test-media-secret-0123456789abcdef0123",
+            LOG_LEVEL: "warn",
+            RATE_LIMIT_MAX: "100000",
+            RATE_LIMIT_UPLOAD_MAX: "100000",
+            SOCKET_EVENTS_PER_10S: "100000",
+            ...env,
         },
-    );
+        stdio: ["ignore", "pipe", "pipe"],
+    });
     let exited = null;
     child.on("exit", (code, signal) => {
         exited = { code, signal };

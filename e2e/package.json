@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build:client": "node scripts/build-client.js",
-        "test": "playwright test"
+        "test": "playwright test",
+        "format": "prettier --write --config ../client/.prettierrc.json tests mocks scripts global-setup.js playwright.config.js"
     },
     "devDependencies": {
         "@axe-core/playwright": "^4.13.0",

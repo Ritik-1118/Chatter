@@ -20,10 +20,13 @@ export default function LinkPreview({ url }) {
     }, [url]);
     if (!preview) return null;
     return (
-        <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="mb-1 flex max-w-xs gap-2 overflow-hidden rounded-md bg-black/5 dark:bg-white/10">
-            {preview.image && (
-                <img src={preview.image} alt="" className="h-16 w-16 shrink-0 object-cover" loading="lazy" referrerPolicy="no-referrer" />
-            )}
+        <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="mb-1 flex max-w-xs gap-2 overflow-hidden rounded-md bg-black/5 dark:bg-white/10"
+        >
+            {preview.image && <img src={preview.image} alt="" className="h-16 w-16 shrink-0 object-cover" loading="lazy" referrerPolicy="no-referrer" />}
             <span className="min-w-0 p-2 text-xs">
                 <span className="block truncate font-semibold">{preview.title}</span>
                 {preview.description && <span className="line-clamp-2 opacity-80">{preview.description}</span>}

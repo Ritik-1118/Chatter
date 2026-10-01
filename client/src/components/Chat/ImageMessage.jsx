@@ -10,7 +10,13 @@ export default function ImageMessage({ message }) {
     return (
         <>
             <button type="button" onClick={() => setOpen(true)} aria-label="Open image" className="block">
-                <img src={src} alt={message.file?.name || "Photo"} loading="lazy" onError={() => setFailed(true)} className="max-h-80 max-w-[260px] rounded-md object-contain sm:max-w-xs" />
+                <img
+                    src={src}
+                    alt={message.file?.name || "Photo"}
+                    loading="lazy"
+                    onError={() => setFailed(true)}
+                    className="max-h-80 max-w-[260px] rounded-md object-contain sm:max-w-xs"
+                />
             </button>
             {open && (
                 <Modal title={message.file?.name || "Photo"} onClose={() => setOpen(false)} className="max-w-4xl">

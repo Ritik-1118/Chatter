@@ -128,7 +128,13 @@ export default function CallScreen() {
                 </p>
             </div>
             {isVideo && (
-                <video ref={localVideo} autoPlay playsInline muted className="absolute bottom-28 right-4 z-10 h-36 w-28 rounded-lg bg-black object-cover shadow-lg sm:h-44 sm:w-32" />
+                <video
+                    ref={localVideo}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="absolute bottom-28 right-4 z-10 h-36 w-28 rounded-lg bg-black object-cover shadow-lg sm:h-44 sm:w-32"
+                />
             )}
             <div className="relative z-10 flex items-center gap-6">
                 <IconButton label={muted ? "Unmute" : "Mute"} onClick={toggleMute} className="h-14 w-14 bg-white/10 text-2xl">

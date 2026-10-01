@@ -31,7 +31,7 @@ export async function createMessage({ conv, senderId, type = "text", message, fi
     const doc = await Message.create({
         conversation: conv._id,
         sender: senderId,
-        receiver: conv.type === "direct" ? recipients[0] ?? null : null,
+        receiver: conv.type === "direct" ? (recipients[0] ?? null) : null,
         recipients,
         deliveredTo,
         readBy: [],
@@ -86,7 +86,10 @@ async function markAs(field, userId, extraFilter) {
     if (field === "deliveredTo") filter.readBy = { $ne: uid };
     const ids = (await Message.find(filter, "_id").limit(5000).lean()).map((m) => m._id);
     if (!ids.length) return [];
-    const add = field === "readBy" ? { readBy: { $setUnion: ["$readBy", [uid]] }, deliveredTo: { $setUnion: ["$deliveredTo", [uid]] } } : { deliveredTo: { $setUnion: ["$deliveredTo", [uid]] } };
+    const add =
+        field === "readBy"
+            ? { readBy: { $setUnion: ["$readBy", [uid]] }, deliveredTo: { $setUnion: ["$deliveredTo", [uid]] } }
+            : { deliveredTo: { $setUnion: ["$deliveredTo", [uid]] } };
     await Message.updateMany({ _id: { $in: ids } }, [{ $set: add }, ...recomputeStatusPipeline]);
     await notifyStatus(ids);
     return ids.map(String);

@@ -136,7 +136,10 @@ export default function ChatHeader({ chat }) {
                         anchorRef={menuButton}
                         onClose={() => setMenuOpen(false)}
                         options={[
-                            { name: chat.isGroup ? "Group info" : "Contact info", callback: () => dispatch({ type: reducerCases.TOGGLE_INFO_PANEL, open: true }) },
+                            {
+                                name: chat.isGroup ? "Group info" : "Contact info",
+                                callback: () => dispatch({ type: reducerCases.TOGGLE_INFO_PANEL, open: true }),
+                            },
                             !chat.isGroup && { name: chat.blocked ? "Unblock" : "Block", callback: toggleBlock, danger: !chat.blocked },
                             !chat.isGroup && { name: "Report", callback: report, danger: true },
                             chat.isGroup && { name: "Leave group", callback: leave, danger: true },

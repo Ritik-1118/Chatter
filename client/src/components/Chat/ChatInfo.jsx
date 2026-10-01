@@ -124,7 +124,9 @@ export default function ChatInfo() {
             <div className="flex flex-col items-center gap-2 p-6 text-center">
                 <Avatar type="xl" image={chat.profilePicture} alt="" />
                 <h3 className="text-xl font-semibold">{chat.name}</h3>
-                <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text">{chat.isGroup ? `Group · ${chat.participants.length} members` : status}</p>
+                <p className="text-sm text-light-secondary-text dark:text-dark-secondary-text">
+                    {chat.isGroup ? `Group · ${chat.participants.length} members` : status}
+                </p>
                 {chat.about && <p className="mt-2 whitespace-pre-wrap text-sm">{chat.about}</p>}
                 {amAdmin && (
                     <button type="button" onClick={() => setModal("edit")} className="mt-2 text-sm font-semibold text-light-accent dark:text-dark-accent">
@@ -152,7 +154,11 @@ export default function ChatInfo() {
                                     {isAdmin && <span className="rounded bg-light-surface px-1.5 text-xs text-unread dark:bg-dark-surface">Admin</span>}
                                     {amAdmin && p.id !== me && (
                                         <span className="flex gap-2 text-xs">
-                                            <button type="button" className="text-light-accent dark:text-dark-accent" onClick={act(() => api.setAdmin(chat.id, p.id, !isAdmin))}>
+                                            <button
+                                                type="button"
+                                                className="text-light-accent dark:text-dark-accent"
+                                                onClick={act(() => api.setAdmin(chat.id, p.id, !isAdmin))}
+                                            >
                                                 {isAdmin ? "Dismiss admin" : "Make admin"}
                                             </button>
                                             <button

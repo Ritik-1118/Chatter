@@ -13,6 +13,33 @@ Finding IDs match the tags in the test titles (`[B-S07]`, `[B-C14]`, …). A tes
 
 ---
 
+## Implementation status (2026-10-01)
+
+The plan in section 3 is implemented on this branch. Sections 1–3 below are kept as the original findings; the "Result on current code" column of section 1 describes the code **before** the fix.
+
+| Suite | Before | After |
+|---|---|---|
+| Server integration | 29 pass / 47 fail | **94 pass / 0 fail**. This includes 21 new tests for groups, edit/delete/reactions, files, typing, block/report, last seen, call outcomes, account deletion, rate limiting, link-preview SSRF, and the data migration. |
+| Client unit | 5 pass / 14 fail | **32 pass / 0 fail** (rewritten for the new state model, keeping every tagged behaviour) |
+| Browser E2E | 5 pass / 22 fail | **40 pass / 0 fail**, stable across repeated runs. Adds groups, media, reply/edit/delete, typing, pagination, reconnect, notifications, blocking, calls, and an axe scan. |
+| `npm audit --omit=dev` | client 11 (2 critical), server 14 (1 critical) | client **0**; server **1 moderate** (transitive `uuid` inside firebase-admin, no fix available upstream) |
+
+**Where the delivery differs from the plan:**
+
+- **Media storage (D-06, G-13)**: kept on local disk, as decided. It sits behind a storage adapter (`server/src/services/storage.js`) and is served through signed, expiring URLs. Production needs a persistent disk at `UPLOAD_DIR`; there is no object-storage driver.
+- **Zego secret (B-C03)**: removed from the code and the bundle (CI greps the build for it). **Rotating the secret in the ZEGOCLOUD console, and optionally purging it from git history, has to be done by the repository owner.**
+- **Calls**: one-to-one only. The group-chat header shows no call buttons. Real media could not be exercised here because outbound Zego traffic is blocked; signalling, the token flow, and all UI states are covered by tests. A manual two-browser call with real credentials is still recommended (acceptance criterion in section 4).
+- **Observability (G-14)**: structured `pino` logging without PII is in place. Sentry/error tracking and PWA/Web Push were **not** added, because both need external accounts or keys (a DSN, VAPID keys). Browser notifications cover background alerts.
+- **Extra**: emoji reactions were added alongside reply/edit/delete.
+- **Upgrades**: Next 16 (React 18.3), Express 5, firebase-admin 13, multer 2, Zego 3 (with a patched `protobufjs` override), and modular `@firebase/app`/`@firebase/auth` instead of the full SDK.
+- **Contract changes**: a few early tests encoded old behaviour, and the new contract supersedes it. Each test was updated to keep its intent.
+  - Errors now use `{ error: { code, message } }`.
+  - Media requires a signed URL or a bearer token.
+  - `from` is optional because the sender comes from the token.
+  - Invalid image bytes are rejected with 415.
+
+---
+
 ## 1. What was tested
 
 | Layer | How | Location | Result on current code |

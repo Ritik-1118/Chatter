@@ -34,7 +34,10 @@ function Chat() {
 
     return (
         <div className="flex h-screen w-full min-w-0">
-            <section className="flex h-screen min-w-0 flex-1 flex-col bg-light-background dark:bg-dark-background" aria-label={`Conversation with ${chat.name}`}>
+            <section
+                className="flex h-screen min-w-0 flex-1 flex-col bg-light-background dark:bg-dark-background"
+                aria-label={`Conversation with ${chat.name}`}
+            >
                 <ChatHeader chat={chat} />
                 {entry?.loaded ? (
                     <ChatContainer chat={chat} entry={entry} />

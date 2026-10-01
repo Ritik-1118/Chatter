@@ -85,7 +85,10 @@ export async function chatRows(viewer, conversations) {
         { path: "participants", select: PUBLIC_USER_FIELDS },
         { path: "lastMessage", populate: { path: "replyTo", select: "sender type message file deletedAt" } },
     ]);
-    const unread = await unreadCounts(viewer._id, convs.map((c) => c._id));
+    const unread = await unreadCounts(
+        viewer._id,
+        convs.map((c) => c._id),
+    );
     const blocked = new Set((viewer.blockedUsers || []).map(String));
 
     return convs.map((conv) => {
@@ -101,9 +104,9 @@ export async function chatRows(viewer, conversations) {
             isGroup,
             partnerId: partner?.id ?? null,
             _id: partner?.id ?? id,
-            name: isGroup ? conv.name : partner?.name ?? "Deleted user",
-            about: isGroup ? conv.description : partner?.about ?? "",
-            profilePicture: isGroup ? conv.avatarUrl || "/group_avatar.svg" : partner?.profilePicture ?? "/default_avatar.png",
+            name: isGroup ? conv.name : (partner?.name ?? "Deleted user"),
+            about: isGroup ? conv.description : (partner?.about ?? ""),
+            profilePicture: isGroup ? conv.avatarUrl || "/group_avatar.svg" : (partner?.profilePicture ?? "/default_avatar.png"),
             lastSeen: partner?.lastSeen ?? null,
             online: partner ? presence.isOnline(partner.id) : false,
             blocked: partner ? blocked.has(partner.id) : false,

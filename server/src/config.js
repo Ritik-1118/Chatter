@@ -66,7 +66,9 @@ if (env.NODE_ENV === "production" && !env.MEDIA_URL_SECRET) {
 export const config = {
     ...env,
     isProduction: env.NODE_ENV === "production",
-    clientOrigins: env.CLIENT_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean),
+    clientOrigins: env.CLIENT_ORIGINS.split(",")
+        .map((o) => o.trim())
+        .filter(Boolean),
     uploadDir: path.resolve(process.cwd(), env.UPLOAD_DIR),
     // Without a configured secret, signed media URLs are valid until the process restarts.
     mediaUrlSecret: env.MEDIA_URL_SECRET || crypto.randomBytes(32).toString("hex"),

@@ -74,7 +74,9 @@ describe("Auth API (/api/auth)", () => {
             // Avatar.jsx and CapturePhoto.jsx send the picture as a base64 data URL.
             // A real phone photo is easily > 100 KB once base64-encoded.
             const noise = Buffer.alloc(400 * 400 * 3).map(() => Math.floor(Math.random() * 256));
-            const jpeg = await sharp(noise, { raw: { width: 400, height: 400, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+            const jpeg = await sharp(noise, { raw: { width: 400, height: 400, channels: 3 } })
+                .jpeg({ quality: 95 })
+                .toBuffer();
             expect(jpeg.length).to.be.greaterThan(100 * 1024);
             const res = await server.request("POST", "/api/auth/onboard-user", {
                 user: makeUser("Photo"),
@@ -139,14 +141,18 @@ describe("Auth API (/api/auth)", () => {
 
         it("[B-S15] does not expose other users' email addresses", async () => {
             const res = await server.request("GET", "/api/auth/get-contacts", { user: alice });
-            const bobEntry = Object.values(res.data.users).flat().find((u) => u._id === bob.id);
+            const bobEntry = Object.values(res.data.users)
+                .flat()
+                .find((u) => u._id === bob.id);
             expect(bobEntry).to.not.have.property("email");
         });
 
         it("[B-S16] returns a stable `id` field the client uses as a React key", async () => {
             // ContactsList.jsx and List.jsx render `key={contact.id}`.
             const res = await server.request("GET", "/api/auth/get-contacts", { user: alice });
-            const bobEntry = Object.values(res.data.users).flat().find((u) => u._id === bob.id);
+            const bobEntry = Object.values(res.data.users)
+                .flat()
+                .find((u) => u._id === bob.id);
             expect(bobEntry.id).to.equal(bob.id);
         });
     });

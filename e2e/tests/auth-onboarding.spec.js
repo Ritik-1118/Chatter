@@ -5,7 +5,9 @@ import { bubbles, chatItem, chatList, createUser, db, expect, openApp, openChat,
 async function realJpeg(kb) {
     const side = Math.ceil(Math.sqrt((kb * 1024) / 3)) + 40;
     const noise = Buffer.alloc(side * side * 3).map(() => Math.floor(Math.random() * 256));
-    return sharp(noise, { raw: { width: side, height: side, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+    return sharp(noise, { raw: { width: side, height: side, channels: 3 } })
+        .jpeg({ quality: 95 })
+        .toBuffer();
 }
 
 test.describe("Authentication & onboarding", () => {
@@ -91,10 +93,12 @@ test.describe("Authentication & onboarding", () => {
             await new Promise((r) => setTimeout(r, 1500));
             await route.continue();
         });
-        await page.evaluate(
-            (identity) => window.localStorage.setItem("__e2e_pending_user", JSON.stringify(identity)),
-            { uid: dave.uid, email: dave.email, displayName: dave.name, photoURL: null },
-        );
+        await page.evaluate((identity) => window.localStorage.setItem("__e2e_pending_user", JSON.stringify(identity)), {
+            uid: dave.uid,
+            email: dave.email,
+            displayName: dave.name,
+            photoURL: null,
+        });
         await page.getByRole("button", { name: "Sign in with Google" }).click();
         await expect(page).toHaveURL(/\/$/);
         await chatItem(page, bob.name).click();

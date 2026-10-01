@@ -15,7 +15,11 @@ import { objectId } from "../validate.js";
 
 const optionalId = objectId().optional().nullable();
 const schemas = {
-    sendMsg: z.object({ messageId: optionalId, message: z.object({ _id: z.string() }).partial().passthrough().optional().nullable(), tempId: z.string().max(64).optional().nullable() }),
+    sendMsg: z.object({
+        messageId: optionalId,
+        message: z.object({ _id: z.string() }).partial().passthrough().optional().nullable(),
+        tempId: z.string().max(64).optional().nullable(),
+    }),
     read: z.object({ messageIds: z.array(objectId()).max(500).optional(), conversationId: optionalId }),
     typing: z.object({ conversationId: optionalId, to: optionalId }),
     invite: z.object({ to: objectId("to"), roomId: z.union([z.string().max(64), z.number()]).optional(), callType: z.enum(["voice", "video"]).optional() }),

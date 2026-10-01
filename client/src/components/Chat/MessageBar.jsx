@@ -177,7 +177,11 @@ export default function MessageBar({ chat }) {
         );
     }
 
-    const banner = edit ? { title: "Editing message", text: edit.message } : reply ? { title: reply.sender === me ? "Replying to yourself" : "Replying", text: reply.message || reply.file?.name || "Attachment" } : null;
+    const banner = edit
+        ? { title: "Editing message", text: edit.message }
+        : reply
+          ? { title: reply.sender === me ? "Replying to yourself" : "Replying", text: reply.message || reply.file?.name || "Attachment" }
+          : null;
     return (
         <div className="relative bg-light-secondary-background dark:bg-dark-secondary-background">
             {banner && (

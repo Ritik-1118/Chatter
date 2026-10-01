@@ -84,9 +84,17 @@ describe("messages", () => {
 
     it("prepends older pages without duplicates and keeps unsent optimistic messages on refresh", () => {
         let state = base({
-            messagesByChat: { [C_BOB]: { items: [msg("m3", C_BOB, BOB), msg("temp-x", C_BOB, ME, { tempId: "temp-x", messageStatus: "failed" })], loaded: true } },
+            messagesByChat: {
+                [C_BOB]: { items: [msg("m3", C_BOB, BOB), msg("temp-x", C_BOB, ME, { tempId: "temp-x", messageStatus: "failed" })], loaded: true },
+            },
         });
-        state = run(state, { type: reducerCases.SET_MESSAGES, chatId: C_BOB, items: [msg("m1", C_BOB, BOB), msg("m3", C_BOB, BOB)], hasMore: true, prepend: true });
+        state = run(state, {
+            type: reducerCases.SET_MESSAGES,
+            chatId: C_BOB,
+            items: [msg("m1", C_BOB, BOB), msg("m3", C_BOB, BOB)],
+            hasMore: true,
+            prepend: true,
+        });
         expect(state.messagesByChat[C_BOB].items.map((m) => m._id)).toEqual(["m1", "m3", "temp-x"]);
         state = run(state, { type: reducerCases.SET_MESSAGES, chatId: C_BOB, items: [msg("m3", C_BOB, BOB), msg("m4", C_BOB, BOB)], hasMore: false });
         expect(state.messagesByChat[C_BOB].items.map((m) => m._id)).toEqual(["m3", "m4", "temp-x"]);
