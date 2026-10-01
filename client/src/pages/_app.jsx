@@ -1,42 +1,46 @@
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { SettingsProvider } from "@/context/SettingsContext";
 import { StateProvider } from "@/context/StateContext";
 import reducer, { initialState } from "@/context/StateReducers";
-import "@/styles/globals.css";
-import Head from "next/head";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import { ToastProvider } from "@/context/ToastContext";
+import "@/styles/globals.css";
 
-export default function App ( { Component, pageProps } ) {
-  const router = useRouter();
-  const [ isRouteChanging, setIsRouteChanging ] = useState( false );
+export default function App({ Component, pageProps }) {
+    const router = useRouter();
+    const [routeChanging, setRouteChanging] = useState(false);
 
-  useEffect( () => {
-    const handleStart = () => setIsRouteChanging( true );
-    const handleDone = () => setIsRouteChanging( false );
+    useEffect(() => {
+        const start = () => setRouteChanging(true);
+        const done = () => setRouteChanging(false);
+        router.events.on("routeChangeStart", start);
+        router.events.on("routeChangeComplete", done);
+        router.events.on("routeChangeError", done);
+        return () => {
+            router.events.off("routeChangeStart", start);
+            router.events.off("routeChangeComplete", done);
+            router.events.off("routeChangeError", done);
+        };
+    }, [router.events]);
 
-    router.events.on( "routeChangeStart", handleStart );
-    router.events.on( "routeChangeComplete", handleDone );
-    router.events.on( "routeChangeError", handleDone );
-
-    return () => {
-      router.events.off( "routeChangeStart", handleStart );
-      router.events.off( "routeChangeComplete", handleDone );
-      router.events.off( "routeChangeError", handleDone );
-    };
-  }, [ router.events ] );
-
-  return (
-    <ThemeProvider>
-      <StateProvider initialState={ initialState } reducer={ reducer }>
-        <Head>
-          <title>ChatApp</title>
-          <link rel="shortcut icon" href="/favicon.ico" />
-        </Head>
-        <div className="app-shell">
-          { isRouteChanging && <div className="route-progress" aria-hidden="true" /> }
-          <Component { ...pageProps } />
-        </div>
-      </StateProvider>
-    </ThemeProvider>
-  )
+    return (
+        <ThemeProvider>
+            <SettingsProvider>
+                <ToastProvider>
+                    <StateProvider initialState={initialState} reducer={reducer}>
+                        <Head>
+                            <title>Chatter</title>
+                            <meta name="viewport" content="width=device-width, initial-scale=1" />
+                        </Head>
+                        <div className="app-shell">
+                            {routeChanging && <div className="route-progress" aria-hidden="true" />}
+                            <Component {...pageProps} />
+                        </div>
+                    </StateProvider>
+                </ToastProvider>
+            </SettingsProvider>
+        </ThemeProvider>
+    );
 }

@@ -1,30 +1,31 @@
-import { useStateProvider } from "@/context/StateContext";
-import React from "react";
-import Image from "next/image";
-import { HOST } from "@/utils/ApiRoutes";
-import MessageStatus from "../common/MessageStatus";
-import { calculateTime } from "@/utils/CalculateTime";
+import { useState } from "react";
+import { assetUrl } from "@/lib/media";
+import Modal from "../common/Modal";
 
-function ImageMessage({ message }) {
-    const [{currentChatUser, userInfo}] = useStateProvider();
-    const imageUrl = `${HOST}/${message.message}`
-    // {console.log("message & currentUser from ImageMessage",message,currentChatUser)}
-
+export default function ImageMessage({ message }) {
+    const [open, setOpen] = useState(false);
+    const [failed, setFailed] = useState(false);
+    const src = assetUrl(message.mediaUrl);
+    if (failed) return <span className="block p-4 text-xs italic opacity-70">Image unavailable</span>;
     return (
-        <div className={`p-1 rounded-lg ${message.sender === currentChatUser._id ? " bg-incoming-background" : " bg-outgoing-background"}`}>
-            <div className="relative">
-                <img src={imageUrl} className="rounded-lg" alt="asset" height={300} width={300} onError={(e) => console.error('Error loading image:', e)}/>
-                <div className=" absolute bottom-1 right-1 flex items-end gap-1">
-                    <span className=" text-bubble-meta text-[11px] pt-1 min-w-fit">
-                        {calculateTime(message.createdAt)}
-                    </span>
-                    <span className=" text-bubble-meta">
-                        {message.sender === userInfo.id && (<MessageStatus messageStatus={message.messageStatus}/>)}
-                    </span>
-                </div>
-            </div>
-        </div>
-    )
+        <>
+            <button type="button" onClick={() => setOpen(true)} aria-label="Open image" className="block">
+                <img
+                    src={src}
+                    alt={message.file?.name || "Photo"}
+                    loading="lazy"
+                    onError={() => setFailed(true)}
+                    className="max-h-80 max-w-[260px] rounded-md object-contain sm:max-w-xs"
+                />
+            </button>
+            {open && (
+                <Modal title={message.file?.name || "Photo"} onClose={() => setOpen(false)} className="max-w-4xl">
+                    <img src={src} alt={message.file?.name || "Photo"} className="mx-auto max-h-[75vh] object-contain" />
+                    <a href={src} download={message.file?.name} className="mt-3 inline-block text-sm text-light-link underline dark:text-dark-link">
+                        Download
+                    </a>
+                </Modal>
+            )}
+        </>
+    );
 }
-
-export default ImageMessage;

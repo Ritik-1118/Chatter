@@ -1,27 +1,47 @@
 {
-    "name": "Chatter",
+    "name": "chatter-client",
     "version": "0.1.0",
     "private": true,
+    "engines": {
+        "node": ">=20.9"
+    },
     "scripts": {
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "eslint .",
+        "format": "prettier --write src test scripts",
+        "format:check": "prettier --check src test scripts",
+        "test": "vitest run",
+        "check:classes": "node scripts/check-tailwind-classes.mjs"
     },
     "dependencies": {
-        "autoprefixer": "^10.4.14",
-        "axios": "^1.4.0",
-        "emoji-picker-react": "^4.4.9",
-        "firebase": "^9.21.0",
-        "next": "13.4.1",
-        "postcss": "^8.4.23",
-        "react": "18.2.0",
-        "react-dom": "18.2.0",
-        "react-icons": "^4.8.0",
-        "react-image-file-resizer": "^0.4.8",
-        "socket.io-client": "^4.6.1",
-        "tailwindcss": "^3.3.2",
-        "wavesurfer.js": "^6.6.3",
-        "zego-express-engine-webrtc": "2.24.5"
+        "@firebase/app": "^0.16.2",
+        "@firebase/auth": "1.13",
+        "autoprefixer": "^10.6.1",
+        "axios": "^1.20.0",
+        "emoji-picker-react": "^4.22.3",
+        "linkify-react": "^4.3.3",
+        "linkifyjs": "^4.3.3",
+        "next": "^16.3.8",
+        "postcss": "^8.5.28",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-icons": "^5.7.0",
+        "socket.io-client": "^4.8.4",
+        "tailwindcss": "3.4",
+        "wavesurfer.js": "^7.12.12",
+        "zego-express-engine-webrtc": "^3.12.0"
+    },
+    "devDependencies": {
+        "@testing-library/react": "^16.3.3",
+        "eslint": "^9.39.5",
+        "eslint-config-next": "^16.3.8",
+        "jsdom": "^26.1.0",
+        "prettier": "^3.9.9",
+        "vitest": "^5.0.3"
+    },
+    "overrides": {
+        "protobufjs": "^7.6.6"
     }
 }

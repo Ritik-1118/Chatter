@@ -1,85 +1,58 @@
-import React, { useState } from 'react'
-import { useStateProvider } from '@/context/StateContext';
-import { reducerCases } from '@/context/constants';
-import { BsArchive, BsFillChatLeftTextFill } from "react-icons/bs"
-import { IoCallOutline } from "react-icons/io5";
-import { PiCircleDashed } from "react-icons/pi";
-import { IoMdMenu } from "react-icons/io";
+import { useState } from "react";
+import { BsFillChatLeftTextFill } from "react-icons/bs";
 import { CgProfile } from "react-icons/cg";
+import { HiOutlineUserGroup } from "react-icons/hi";
+import { IoMdMenu } from "react-icons/io";
 import { MdOutlineSettings } from "react-icons/md";
-import { useTheme } from '@/context/ThemeContext';
-import ProfileModal from '../common/ProfileModal';
-import SettingModal from '../common/SettingModal';
+import { reducerCases } from "@/context/constants";
+import { useStateProvider } from "@/context/StateContext";
+import ProfileModal from "../common/ProfileModal";
+import SettingModal from "../common/SettingModal";
 
-export default function LeftSidebar () {
-  const [ sideBarMenu, setSideBarMenu ] = useState( true );
-  const [ { smWindows, showSmChatList, userInfo }, dispatch ] = useStateProvider();
-  const { theme } = useTheme();
-  const [ showProfileModal, setShowProfileModal ] = useState( false );
-  const [ showSettingModal, setShowSettingModal ] = useState( false );
-  const handleChatClick = () => {
-    dispatch( {
-      type: reducerCases.SET_SHOW_SM_CHATLIST,
-      showSmChatList: true,
-    } );
-  }
-  const handleMenuClick = () => {
-    setSideBarMenu( !sideBarMenu );
-  }
-  const handleProfileClick = () => {
-    setShowProfileModal( true );
-  }
-  const handleSettingClick = () => {
-    setShowSettingModal( true );
-  }
+function NavItem({ icon: Icon, label, expanded, onClick, active }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={label}
+            aria-current={active ? "page" : undefined}
+            title={label}
+            className={`flex w-full items-center gap-3 rounded-lg px-2 py-3 text-xl text-light-secondary-text hover:bg-black/5 dark:text-dark-secondary-text dark:hover:bg-white/10 ${
+                active ? "text-light-accent dark:text-dark-accent" : ""
+            }`}
+        >
+            <Icon aria-hidden="true" />
+            {expanded && <span className="text-base">{label}</span>}
+        </button>
+    );
+}
 
-  return (
-    <div className={ `h-full px-4 py-3 flex flex-col justify-between z-50 border-r-2 ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider text-dark-primary-text' : 'bg-light-secondary-background border-light-divider text-light-primary-text'}` }>
-      <div className="">
-        <div className={ `py-4 text-3xl flex items-center justify-items-start cursor-pointer ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>
-          <IoMdMenu onClick={ () => handleMenuClick() } />
-          <span className={ `${sideBarMenu && "hidden"} text-xl pl-2` }>Menu</span>
-        </div>
-        <div className={ `py-4 text-xl flex items-center justify-items-start cursor-pointer ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>
-          <BsFillChatLeftTextFill onClick={ () => handleChatClick() } />
-          <span className={ `${sideBarMenu && "hidden"} pl-2` }>Chats</span>
-        </div>
-        {/* <div className={ `py-4 flex items-center justify-items-start text-xl cursor-pointer ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>
-          <IoCallOutline />
-          <span className={ `${sideBarMenu && "hidden"} pl-2` }>Calls</span>
-        </div> */}
-        {/* <div className="py-4 text-xl cursor-pointer text-panel-header-icon">
-                    <PiCircleDashed />
-                </div> */}
-      </div>
-      <div>
-        {/* <div className={ `py-4 flex items-center justify-items-start text-xl cursor-pointer ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>
-          <BsArchive />
-          <span className={ `${sideBarMenu && "hidden"} pl-2` }>Archive</span>
-        </div> */}
-        <div className="flex items-center">
-          <hr />
-        </div>
-        <div
-          className={ `py-4 flex items-center justify-items-start text-xl cursor-pointer ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }
-          onClick={ handleSettingClick }
+export default function LeftSidebar() {
+    const [{ panel }, dispatch] = useStateProvider();
+    const [expanded, setExpanded] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const showPanel = (p) => {
+        dispatch({ type: reducerCases.SET_PANEL, panel: p });
+        dispatch({ type: reducerCases.SET_SHOW_SM_CHATLIST, showSmChatList: true });
+    };
+
+    return (
+        <nav
+            aria-label="Main menu"
+            className="z-40 flex h-full shrink-0 flex-col justify-between border-r-2 border-light-divider bg-light-secondary-background px-2 py-3 dark:border-dark-divider dark:bg-dark-secondary-background"
         >
-          <MdOutlineSettings />
-          <span className={ `${sideBarMenu && "hidden"} pl-2` }>Setting</span>
-        </div>
-        <div className={ `py-4 flex items-center justify-items-start text-xl cursor-pointer ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }
-          onClick={ handleProfileClick }
-        >
-          <CgProfile />
-          <span className={ `${sideBarMenu && "hidden"} pl-2` }>Profile</span>
-        </div>
-      </div>
-      { showProfileModal && (
-        <ProfileModal user={ userInfo } onClose={ () => setShowProfileModal( !showProfileModal ) } />
-      ) }
-      { showSettingModal && (
-        <SettingModal onClose={ () => setShowSettingModal( false ) } />
-      ) }
-    </div>
-  )
+            <div className="flex flex-col gap-1">
+                <NavItem icon={IoMdMenu} label={expanded ? "Collapse menu" : "Expand menu"} expanded={expanded} onClick={() => setExpanded((v) => !v)} />
+                <NavItem icon={BsFillChatLeftTextFill} label="Chats" expanded={expanded} active={panel === "chats"} onClick={() => showPanel("chats")} />
+                <NavItem icon={HiOutlineUserGroup} label="New group" expanded={expanded} active={panel === "newGroup"} onClick={() => showPanel("newGroup")} />
+            </div>
+            <div className="flex flex-col gap-1">
+                <NavItem icon={MdOutlineSettings} label="Settings" expanded={expanded} onClick={() => setSettingsOpen(true)} />
+                <NavItem icon={CgProfile} label="Profile" expanded={expanded} onClick={() => setProfileOpen(true)} />
+            </div>
+            {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
+            {settingsOpen && <SettingModal onClose={() => setSettingsOpen(false)} />}
+        </nav>
+    );
 }

@@ -1,79 +1,62 @@
-import { useStateProvider } from "@/context/StateContext";
-import { reducerCases } from "@/context/constants";
-import { calculateTime } from "@/utils/CalculateTime";
-import React, { useEffect, useState } from "react";
-import { BiSearchAlt2 } from "react-icons/bi";
+import { useMemo, useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { useTheme } from '@/context/ThemeContext';
+import { reducerCases } from "@/context/constants";
+import { useStateProvider } from "@/context/StateContext";
+import { selectCurrentChat, selectMessages } from "@/context/StateReducers";
+import { calculateTime } from "@/lib/time";
+import IconButton from "../common/IconButton";
 
-function SearchMessages() {
-    const [{currentChatUser,messages},dispatch] = useStateProvider();
-    const [searchTerm,setSearchTerm] = useState("");
-    const [searchedMessages,setSearchedMessages] = useState([]);
-    const { theme } = useTheme();
+export default function SearchMessages() {
+    const [state, dispatch] = useStateProvider();
+    const chat = selectCurrentChat(state);
+    const messages = selectMessages(state, chat?.id);
+    const [term, setTerm] = useState("");
 
-    useEffect(() => {
-        if (searchTerm) {
-            setSearchedMessages(
-                messages.filter(
-                    (message) =>
-                    message.type === "text" && message.message.includes(searchTerm)
-                )
-            );
-        } else {
-            setSearchedMessages([]);
-        }
-    }, [searchTerm]);
+    const results = useMemo(() => {
+        const q = term.trim().toLowerCase();
+        if (!q) return [];
+        return messages.filter((m) => m.type === "text" && !m.deleted && m.message.toLowerCase().includes(q)).reverse();
+    }, [messages, term]);
 
     return (
-        <div className={`w-full flex flex-col z-10 max-h-screen border ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider text-dark-primary-text' : 'bg-light-secondary-background border-light-divider text-light-primary-text'}`}>
-            <div className={`h-16 px-4 py-5 flex gap-10 items-center border-b ${theme === 'dark' ? 'bg-dark-surface border-dark-divider text-dark-primary-text' : 'bg-light-surface border-light-divider text-light-primary-text'}`}>
-                <IoClose className={`cursor-pointer text-2xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}`}
-                    onClick={()=> dispatch({type:reducerCases.SET_MESSAGE_SEARCH})}
+        <div className="flex h-full flex-col text-light-primary-text dark:text-dark-primary-text">
+            <div className="flex h-16 items-center gap-4 border-b border-light-divider bg-light-surface px-4 dark:border-dark-divider dark:bg-dark-surface">
+                <IconButton label="Close search" onClick={() => dispatch({ type: reducerCases.TOGGLE_MESSAGE_SEARCH })}>
+                    <IoClose aria-hidden="true" />
+                </IconButton>
+                <h2>Search messages</h2>
+            </div>
+            <div className="p-4">
+                <input
+                    type="search"
+                    autoFocus
+                    placeholder="Search messages"
+                    aria-label="Search messages"
+                    value={term}
+                    onChange={(e) => setTerm(e.target.value)}
+                    className="w-full rounded-lg border border-light-divider bg-light-secondary-background px-3 py-2 text-sm focus:outline-none dark:border-dark-divider dark:bg-dark-secondary-background"
                 />
-                <span>Search Messages</span>
+                {!term && (
+                    <p className="mt-6 text-center text-sm text-light-secondary-text dark:text-dark-secondary-text">Search for messages with {chat?.name}</p>
+                )}
+                {term && !results.length && (
+                    <p className="mt-6 text-center text-sm text-light-secondary-text dark:text-dark-secondary-text">No messages found.</p>
+                )}
             </div>
-            <div className="overflow-auto custom-scrollbar h-full">
-                <div className="flex items-center flex-col w-full">
-                    <div className={`flex px-5 items-center gap-3 h-14 w-full`}>
-                        <div className={`flex items-center gap-5 px-3 py-1 rounded-lg flex-grow border ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider' : 'bg-light-secondary-background border-light-divider'}`}>
-                            <div>
-                                <BiSearchAlt2 className={`cursor-pointer text-l ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}`}/>
-                            </div>
-                            <div>
-                                <input 
-                                    type="text" 
-                                    placeholder="Search Messages" 
-                                    className={`bg-transparent text-sm focus:outline-none w-full ${theme === 'dark' ? 'text-dark-primary-text' : 'text-light-primary-text'}`} 
-                                    value={searchTerm} 
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <span className={`mt-10 ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}`}>
-                        {!searchTerm.length &&
-                        `Search for messages with ${currentChatUser.name}`}
-                    </span>
-                </div>
-                <div className="flex justify-center h-full flex-col">
-                    {searchTerm.length>0 && !searchedMessages.length && (
-                        <span className={`${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'} w-full flex justify-center`}>
-                            No messages found.
-                        </span>
-                    )}
-                    <div className="flex flex-col w-full h-full">
-                        {searchedMessages.map((message)=> (
-                            <div className={`flex cursor-pointer flex-col justify-center w-full px-5 border-b py-5 ${theme === 'dark' ? 'hover:bg-dark-surface border-dark-divider' : 'hover:bg-light-surface border-light-divider'}`}>
-                                <div className={`text-sm ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}`}>{calculateTime(message.createdAt)}</div>
-                                <div className={`${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}`}>{message.message}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+            <ul className="custom-scrollbar flex-1 overflow-auto" aria-label="Search results">
+                {results.map((m) => (
+                    <li key={m._id}>
+                        <button
+                            type="button"
+                            onClick={() => dispatch({ type: reducerCases.HIGHLIGHT_MESSAGE, messageId: m._id })}
+                            className="w-full border-b border-light-divider px-5 py-4 text-left hover:bg-light-surface dark:border-dark-divider dark:hover:bg-dark-surface"
+                        >
+                            <span className="block text-xs text-light-secondary-text dark:text-dark-secondary-text">{calculateTime(m.createdAt)}</span>
+                            <span className="line-clamp-2 text-light-accent dark:text-dark-accent">{m.message}</span>
+                        </button>
+                    </li>
+                ))}
+            </ul>
         </div>
-    )
+    );
 }
-
-export default SearchMessages;

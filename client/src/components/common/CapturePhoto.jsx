@@ -1,47 +1,55 @@
-import React, { useEffect, useRef } from "react";
-import {IoClose} from "react-icons/io5"
+import { useEffect, useRef, useState } from "react";
+import Modal from "./Modal";
 
-function CapturePhoto({hide,setImage}) {
+export default function CapturePhoto({ setImage, onClose }) {
+    const videoRef = useRef(null);
+    const [error, setError] = useState("");
 
-  useEffect(()=>{
-    let stream;
-    const startCamera = async () =>{
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:true,
-        audio:false,
-      })
-      videoRef.current.srcObject=stream;
-    }
-    startCamera();
-    return () =>{
-      stream?.getTracks().forEach((track) => track.stop());
-    }
-  },[])
+    useEffect(() => {
+        let stream;
+        let cancelled = false;
+        navigator.mediaDevices
+            ?.getUserMedia({ video: true, audio: false })
+            .then((s) => {
+                if (cancelled) return s.getTracks().forEach((t) => t.stop());
+                stream = s;
+                if (videoRef.current) videoRef.current.srcObject = s;
+            })
+            .catch(() => setError("Camera access was denied or no camera is available."));
+        return () => {
+            cancelled = true;
+            stream?.getTracks().forEach((t) => t.stop());
+        };
+    }, []);
 
-  const videoRef = useRef(null);
-  const CapturePhoto = () =>{
-    const canvas = document.createElement("canvas")
-    canvas.getContext("2d").drawImage(videoRef.current,0,0,300,150);
-    setImage(canvas.toDataURL("image/jpeg"))
-    hide(false)
-  };
+    const capture = () => {
+        const video = videoRef.current;
+        if (!video?.videoWidth) return;
+        const size = Math.min(video.videoWidth, video.videoHeight);
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        canvas.getContext("2d").drawImage(video, (video.videoWidth - size) / 2, (video.videoHeight - size) / 2, size, size, 0, 0, 512, 512);
+        setImage(canvas.toDataURL("image/jpeg", 0.85));
+        onClose();
+    };
 
-  return (
-    <div className=" absolute h-4/6 w-2/6 top-1/4 left-1/3 bg-gray-900 gap-3 rounded-lg pt-2 flex items-center justify-center">
-      <div className="flex flex-col gap-4 w-full items-center justify-center">
-        <div className=" pt-2 pr-2 cursor-pointer flex items-end justify-end" onClick={()=>hide(false)}>
-          <IoClose className=" h-10 w-10 cursor-pointer"/>
-        </div>
-        <div className="flex justify-center">
-          <video id="video" width={400} autoPlay ref={videoRef}></video>
-        </div>
-        <button className=" h-16 w-16 bg-white rounded-full cursor-pointer border-8 border-teal-light p-2 mb-10"
-          onClick={CapturePhoto}
-        >
-        </button>
-      </div>
-    </div>
-  )
+    return (
+        <Modal title="Take a photo" onClose={onClose}>
+            {error ? (
+                <p role="alert">{error}</p>
+            ) : (
+                <div className="flex flex-col items-center gap-4">
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-lg bg-black" />
+                    <button
+                        type="button"
+                        onClick={capture}
+                        className="rounded-full bg-light-accent px-6 py-2 font-semibold text-white dark:bg-dark-accent dark:text-dark-surface"
+                    >
+                        Capture
+                    </button>
+                </div>
+            )}
+        </Modal>
+    );
 }
-
-export default CapturePhoto;

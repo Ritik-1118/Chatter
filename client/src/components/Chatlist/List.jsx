@@ -1,41 +1,37 @@
-import { useStateProvider } from "@/context/StateContext";
-import axios from "axios";
-import React, { useEffect } from "react";
-import { GET_INITIAL_CONTACTS_RIUTE } from "@/utils/ApiRoutes";
 import { reducerCases } from "@/context/constants";
-import ChatLIstItem from "./ChatLIstItem";
-import { useTheme } from '@/context/ThemeContext';
-import { setAxiosAuthToken } from "@/utils/authHeaders";
+import { useStateProvider } from "@/context/StateContext";
+import { selectVisibleChats } from "@/context/StateReducers";
+import ChatListItem from "./ChatListItem";
 
-function List() {
-    const [{ userInfo,userContacts,filteredContacts },dispatch] = useStateProvider();
-    const { theme } = useTheme();
+export default function List() {
+    const [state, dispatch] = useStateProvider();
+    const chats = selectVisibleChats(state);
+    const searching = state.contactSearch.trim().length > 0;
 
-    useEffect(() => {
-        const getContacts = async () => {
-            try {
-                await setAxiosAuthToken();
-                const {data:{users,onlineUsers},} = await axios(`${GET_INITIAL_CONTACTS_RIUTE}/${userInfo.id}`);
-                // console.log("users from List ",users,onlineUsers)
-                dispatch({type:reducerCases.SET_ONLINE_USERS,onlineUsers});
-                dispatch({type:reducerCases.SET_USER_CONTACTS,userContacts: users});
-
-            } catch (error) {
-                console.log(error);
-            }
-        };
-        if(userInfo?.id) getContacts();
-    },[userInfo]);
+    if (!chats.length) {
+        return (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-light-secondary-text dark:text-dark-secondary-text">
+                <p>{searching ? "No chats match your search." : "No conversations yet."}</p>
+                {!searching && (
+                    <button
+                        type="button"
+                        className="rounded-lg bg-light-accent px-4 py-2 font-semibold text-white dark:bg-dark-accent dark:text-dark-surface"
+                        onClick={() => dispatch({ type: reducerCases.SET_PANEL, panel: "contacts" })}
+                    >
+                        Start a chat
+                    </button>
+                )}
+            </div>
+        );
+    }
 
     return (
-        <div className={`flex-auto overflow-auto max-h-full custom-scrollbar ${theme === 'dark' ? 'bg-dark-surface' : 'bg-light-surface'}`}>
-        {filteredContacts && filteredContacts.length>0 ? (
-            filteredContacts.map((contact)=> <ChatLIstItem data={contact} key={contact.id}/>)
-            ) :(
-                userContacts.map((contact)=> <ChatLIstItem data={contact} key={contact.id}/>)
-            )}
-        </div>
-    )
+        <ul className="custom-scrollbar max-h-full flex-auto overflow-auto" aria-label="Conversations">
+            {chats.map((chat) => (
+                <li key={chat.id}>
+                    <ChatListItem chat={chat} />
+                </li>
+            ))}
+        </ul>
+    );
 }
-
-export default List;

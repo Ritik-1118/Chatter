@@ -1,0 +1,6 @@
+{
+    "require": ["test/helpers/root-hooks.js"],
+    "spec": ["test/**/*.test.js"],
+    "timeout": 30000,
+    "exit": true
+}

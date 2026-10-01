@@ -1,173 +1,76 @@
-import React, { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { useStateProvider } from "@/context/StateContext";
-import Input from "@/components/common/Input";
-import Avatar from "@/components/common/Avatar";
-import axios from "axios";
-import { reducerCases } from "@/context/constants";
-import { ONBOARD_USER_ROUTE } from "@/utils/ApiRoutes";
 import { useRouter } from "next/router";
-import { setAxiosAuthToken } from "@/utils/authHeaders";
+import { useEffect, useRef, useState } from "react";
+import AuthLayout from "@/components/AuthLayout";
+import AvatarPicker from "@/components/common/AvatarPicker";
+import Input from "@/components/common/Input";
+import { reducerCases } from "@/context/constants";
+import { useStateProvider } from "@/context/StateContext";
+import { api } from "@/lib/api";
+import { toUserInfo } from "@/lib/session";
 
-function onboarding () {
+export default function Onboarding() {
+    const router = useRouter();
+    const [{ userInfo, newUser }, dispatch] = useStateProvider();
+    const [name, setName] = useState(userInfo?.name || "");
+    const [about, setAbout] = useState("");
+    const [image, setImage] = useState("/default_avatar.png");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const headingRef = useRef(null);
 
-  const router = useRouter();
-  const [ { userInfo, newUser }, dispatch ] = useStateProvider();
-  const [ name, setName ] = useState( userInfo?.name || "" );
-  const [ about, setAbout ] = useState( "" );
-  const [ image, setImage ] = useState( "/default_avatar.png" );
-  const [ theme, setTheme ] = useState( 'dark' );
-  const [ loading, setLoading ] = useState( false );
-  const [ error, setError ] = useState( "" );
-  const headingRef = useRef(null);
+    useEffect(() => {
+        if (!newUser) router.replace(userInfo?.id ? "/" : "/login");
+    }, [newUser, userInfo, router]);
+    useEffect(() => headingRef.current?.focus(), []);
 
-  useEffect( () => {
-    // Check localStorage or system preference
-    const savedTheme = typeof window !== 'undefined' && localStorage.getItem( 'theme' );
-    if ( savedTheme ) {
-      setTheme( savedTheme );
-      document.documentElement.classList.toggle( 'dark', savedTheme === 'dark' );
-    } else {
-      const prefersDark = window.matchMedia && window.matchMedia( '(prefers-color-scheme: dark)' ).matches;
-      setTheme( prefersDark ? 'dark' : 'light' );
-      document.documentElement.classList.toggle( 'dark', prefersDark );
-    }
-  }, [] );
+    const submit = async (e) => {
+        e.preventDefault();
+        setError("");
+        if (name.trim().length < 3) return setError("Display name must be at least 3 characters.");
+        setLoading(true);
+        try {
+            const data = await api.onboard({ name: name.trim(), about: about.trim(), image });
+            // Setting the user and clearing newUser triggers the single redirect above.
+            dispatch({ type: reducerCases.SET_USER_INFO, userInfo: toUserInfo(data.user) });
+            dispatch({ type: reducerCases.SET_NEW_USER, newUser: false });
+        } catch (err) {
+            setError(err.message || "Could not create profile. Please try again.");
+            setLoading(false);
+        }
+    };
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme( newTheme );
-    if ( typeof window !== 'undefined' ) {
-      localStorage.setItem( 'theme', newTheme );
-      document.documentElement.classList.toggle( 'dark', newTheme === 'dark' );
-    }
-  };
-
-  useEffect( () => {
-    if ( !newUser && !userInfo?.email ) router.push( "/login" );
-    else if ( !newUser && userInfo?.email ) router.push( "/" );
-  }, [ newUser, userInfo, router ] )
-
-  useEffect(() => {
-    if (headingRef.current) headingRef.current.focus();
-  }, []);
-
-  const onboardUserHandler = async () => {
-    setError( "" );
-    if ( !validateDetails() ) {
-      setError( "Display name must be at least 3 characters." );
-      return;
-    }
-    const email = userInfo.email;
-    try {
-      setLoading( true );
-      await setAxiosAuthToken();
-      const { data } = await axios.post( ONBOARD_USER_ROUTE, { email, name, about, image, } );
-      if ( data.status ) {
-        dispatch( { type: reducerCases.SET_NEW_USER, newUser: false } );
-        dispatch( {
-          type: reducerCases.SET_USER_INFO,
-          userInfo: {
-            id: data.user._id,
-            name,
-            email,
-            profileImage: image,
-            status: about,
-          },
-        } );
-        router.push( "/" );
-      } else {
-        setError( "Profile creation failed. Please retry." );
-      }
-    } catch ( error ) {
-      console.log( error );
-      setError( "Could not create profile. Check your connection and try again." );
-    } finally {
-      setLoading( false );
-    }
-  };
-  const validateDetails = () => {
-    if ( name.length < 3 ) {
-      return false;
-    }
-    return true
-  };
-  return (
-    <div className={ `relative min-h-screen w-full flex items-center justify-center overflow-hidden ${theme === 'dark' ? 'bg-dark-background' : 'bg-light-background'}` }>
-      <button
-        type="button"
-        className={ `absolute top-6 right-6 z-20 px-4 py-2 rounded-full shadow-md font-semibold transition-colors duration-200 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'bg-dark-surface text-dark-accent border-dark-accent focus-visible:outline-dark-accent' : 'bg-light-surface text-light-accent border-light-accent focus-visible:outline-light-accent'} border` }
-        onClick={ toggleTheme }
-        aria-label="Toggle dark or light mode"
-      >
-        { theme === 'dark' ? '🌙 Dark' : '☀️ Light' }
-      </button>
-      {/* Animated Gradient Background */ }
-      <div className={ `absolute inset-0 z-0 animate-gradient ${theme === 'dark' ? 'bg-dark-accent' : 'bg-light-accent'} opacity-20` } style={ { filter: 'blur(3px)' } } />
-      <main
-        role="main"
-        className="relative z-10 flex flex-col items-center justify-center w-full max-w-2xl mx-4 animate-fade-in"
-        aria-busy={loading}
-      >
-        {/* Logo and Title */ }
-        <div className="flex flex-col items-center mb-6">
-          <Image src={ "/gifs/G1.gif" } alt="Chatter Logo" width={ 90 } height={ 90 } className={ `rounded-full shadow-lg mb-2 border-4 ${theme === 'dark' ? 'border-dark-accent' : 'border-light-accent'}` } />
-          <span className={ `text-4xl font-extrabold tracking-wide font-mono mb-2 ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` }>Chatter</span>
-          <h2
-            ref={headingRef}
-            tabIndex={-1}
-            className={ `text-2xl font-semibold mb-1 ${theme === 'dark' ? 'text-dark-primary-text' : 'text-light-primary-text'}` }
-          >
-            Create your profile
-          </h2>
-          <p className={ `text-base ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>Let others know who you are!</p>
-        </div>
-        { error && (
-          <div className={ `w-full mb-4 px-4 py-3 rounded-lg text-sm font-medium ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-700'}` } role="alert" aria-live="assertive">
-            { error }
-          </div>
-        ) }
-        {/* Card */ }
-        <div className={ `flex flex-col md:flex-row w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider' : 'bg-light-secondary-background border-light-divider'} border` }>
-          {/* Avatar Section */ }
-          <div className={ `flex flex-col items-center justify-center gap-4 py-10 px-8 md:w-1/2 ${theme === 'dark' ? 'bg-dark-surface border-dark-divider' : 'bg-light-surface border-light-divider'} border-r` }>
-            <Avatar type={ "xl" } image={ image } setImage={ setImage } />
-            <span className={ `mt-2 text-base font-medium ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>Choose your avatar</span>
-          </div>
-          {/* Form Section */ }
-          <div className="flex flex-col justify-center gap-6 py-10 px-8 md:w-1/2">
-            <Input name="Display Name" state={ name } setState={ setName } label required />
-            <Input name="about" state={ about } setState={ setAbout } label />
-            <button
-              type="button"
-              className={ `w-full py-3 px-6 rounded-xl font-semibold shadow-lg transition-all duration-200 text-lg mt-2 hover:scale-105 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'bg-dark-accent text-dark-surface border-dark-accent focus-visible:outline-dark-accent' : 'bg-light-accent text-light-surface border-light-accent focus-visible:outline-light-accent'} border ${loading ? 'opacity-80 cursor-not-allowed' : ''}` }
-              onClick={ onboardUserHandler }
-              disabled={ loading }
-              aria-label="Create profile"
+    return (
+        <AuthLayout wide busy={loading}>
+            <h1 ref={headingRef} tabIndex={-1} className="mb-1 text-2xl font-semibold text-light-primary-text outline-none dark:text-dark-primary-text">
+                Create your profile
+            </h1>
+            <p className="mb-6 text-light-secondary-text dark:text-dark-secondary-text">Let others know who you are!</p>
+            {error && (
+                <div className="mb-4 w-full rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700 dark:bg-red-900 dark:text-red-100" role="alert">
+                    {error}
+                </div>
+            )}
+            <form
+                onSubmit={submit}
+                className="flex w-full flex-col overflow-hidden rounded-3xl border border-light-divider bg-light-secondary-background shadow-2xl dark:border-dark-divider dark:bg-dark-secondary-background md:flex-row"
             >
-              { loading ? "Creating profile..." : "Create Profile" }
-            </button>
-          </div>
-        </div>
-      </main>
-      <style jsx global>{ `
-          @keyframes gradient {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-          }
-          .animate-gradient {
-            animation: gradient 12s ease-in-out infinite;
-          }
-          @keyframes fade-in {
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fade-in {
-            animation: fade-in 1.2s cubic-bezier(0.4,0,0.2,1) both;
-          }
-        `}</style>
-    </div>
-  )
+                <div className="flex flex-col items-center justify-center gap-4 border-light-divider bg-light-surface px-8 py-10 dark:border-dark-divider dark:bg-dark-surface md:w-1/2 md:border-r">
+                    <AvatarPicker image={image} setImage={setImage} onError={setError} />
+                    <span className="text-light-secondary-text dark:text-dark-secondary-text">Choose your avatar</span>
+                </div>
+                <div className="flex flex-col justify-center gap-6 px-8 py-10 md:w-1/2">
+                    <Input name="Display Name" state={name} setState={setName} label required maxLength={50} />
+                    <Input name="About" state={about} setState={setAbout} label maxLength={140} />
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        aria-label="Create profile"
+                        className="w-full rounded-xl bg-light-accent px-6 py-3 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-80 dark:bg-dark-accent dark:text-dark-surface"
+                    >
+                        {loading ? "Creating profile…" : "Create Profile"}
+                    </button>
+                </div>
+            </form>
+        </AuthLayout>
+    );
 }
-
-export default onboarding;
