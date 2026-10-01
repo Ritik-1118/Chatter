@@ -43,9 +43,16 @@ describe("Media uploads", () => {
             expect(res.data.message.type).to.equal("image");
             expect(res.data.message.message).to.match(/^uploads\/images\/.+\.png$/);
 
-            const file = await fetch(`${server.baseUrl}/${res.data.message.message}`);
-            expect(file.status).to.equal(200);
-            expect(file.headers.get("content-type")).to.equal("image/png");
+            // Via the signed URL the API hands out (usable in <img> tags)…
+            expect(res.data.message.mediaUrl).to.match(/^\/uploads\/images\/.+\?exp=\d+&sig=/);
+            const signed = await fetch(server.baseUrl + res.data.message.mediaUrl);
+            expect(signed.status).to.equal(200);
+            expect(signed.headers.get("content-type")).to.equal("image/png");
+            // …or with a participant's bearer token.
+            const bearer = await fetch(`${server.baseUrl}/${res.data.message.message}`, {
+                headers: { Authorization: `Bearer ${bob.token}` },
+            });
+            expect(bearer.status).to.equal(200);
         });
 
         it("[B-S22] rejects a disallowed file type with a 4xx JSON error (not a 500 HTML page)", async () => {
@@ -67,13 +74,14 @@ describe("Media uploads", () => {
             expect(res.status).to.equal(413);
         });
 
-        it("[B-S23] returns 400 (not 500) when the `from` query parameter is missing", async () => {
+        it("[B-S23] takes the sender from the auth token when `from` is omitted (no 500)", async () => {
             const res = await upload(server, alice, "add-image-message", "image", {
                 blob: new Blob([PNG], { type: "image/png" }),
                 filename: "dot.png",
                 query: { to: bob.id },
             });
-            expect(res.status).to.equal(400);
+            expect(res.status).to.equal(201);
+            expect(res.data.message.sender).to.equal(alice.id);
         });
 
         it("[B-S24] does not leave orphaned files on disk when the request is rejected", async () => {
@@ -110,7 +118,7 @@ describe("Media uploads", () => {
             }
         });
 
-        it("[B-S27] does not serve uploaded media to unauthenticated clients", async () => {
+        it("[B-S27] does not serve uploaded media to unauthenticated or non-member clients", async () => {
             const res = await upload(server, alice, "add-image-message", "image", {
                 blob: new Blob([PNG], { type: "image/png" }),
                 filename: "dot.png",
@@ -118,6 +126,13 @@ describe("Media uploads", () => {
             });
             const anon = await fetch(`${server.baseUrl}/${res.data.message.message}`);
             expect(anon.status).to.be.oneOf([401, 403]);
+            const carol = await server.createUser("Carol");
+            const outsider = await fetch(`${server.baseUrl}/${res.data.message.message}`, {
+                headers: { Authorization: `Bearer ${carol.token}` },
+            });
+            expect(outsider.status).to.equal(403);
+            const tampered = await fetch(server.baseUrl + res.data.message.mediaUrl.replace(/sig=./, "sig=x"));
+            expect(tampered.status).to.equal(401);
         });
     });
 
@@ -143,7 +158,8 @@ describe("Media uploads", () => {
                 query: { from: alice.id, to: bob.id },
             });
             expect(res.status).to.equal(201);
-            const file = await fetch(`${server.baseUrl}/${res.data.message.message}`);
+            expect(res.data.message.message).to.match(/\.webm$/);
+            const file = await fetch(server.baseUrl + res.data.message.mediaUrl);
             expect(file.headers.get("content-type")).to.match(/webm/);
         });
     });

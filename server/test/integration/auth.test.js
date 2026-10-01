@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import sharp from "sharp";
 import { makeUser, startServer } from "../helpers/harness.js";
 
 describe("Auth API (/api/auth)", () => {
@@ -14,7 +15,8 @@ describe("Auth API (/api/auth)", () => {
         it("rejects requests without a bearer token with 401 JSON", async () => {
             const res = await server.request("POST", "/api/auth/check-user");
             expect(res.status).to.equal(401);
-            expect(res.data).to.have.property("message");
+            expect(res.data.error).to.include({ code: "unauthenticated" });
+            expect(res.data.error).to.have.property("message");
         });
 
         it("rejects requests with an invalid token with 401", async () => {
@@ -69,14 +71,29 @@ describe("Auth API (/api/auth)", () => {
         });
 
         it("[B-S12] accepts a custom (uploaded/captured) avatar of realistic size", async () => {
-            // Avatar.jsx and CapturePhoto.jsx store the picture as a base64 data URL.
-            // A small JPEG photo is easily > 100 KB once base64-encoded.
-            const image = `data:image/jpeg;base64,${Buffer.alloc(150 * 1024, 7).toString("base64")}`;
+            // Avatar.jsx and CapturePhoto.jsx send the picture as a base64 data URL.
+            // A real phone photo is easily > 100 KB once base64-encoded.
+            const noise = Buffer.alloc(400 * 400 * 3).map(() => Math.floor(Math.random() * 256));
+            const jpeg = await sharp(noise, { raw: { width: 400, height: 400, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+            expect(jpeg.length).to.be.greaterThan(100 * 1024);
             const res = await server.request("POST", "/api/auth/onboard-user", {
                 user: makeUser("Photo"),
-                json: { name: "Photo", image },
+                json: { name: "Photo", image: `data:image/jpeg;base64,${jpeg.toString("base64")}` },
             });
             expect(res.status).to.equal(200);
+            // Stored as a resized, server-hosted file rather than a base64 blob in the DB.
+            expect(res.data.user.profilePicture).to.match(/^\/uploads\/avatars\/.+\.webp$/);
+            const avatar = await fetch(server.baseUrl + res.data.user.profilePicture);
+            expect(avatar.status).to.equal(200);
+        });
+
+        it("rejects an avatar data URL whose bytes are not an image", async () => {
+            const image = `data:image/jpeg;base64,${Buffer.alloc(1024, 7).toString("base64")}`;
+            const res = await server.request("POST", "/api/auth/onboard-user", {
+                user: makeUser("Fake"),
+                json: { name: "Fake", image },
+            });
+            expect(res.status).to.equal(415);
         });
 
         it("[B-S13] trims and validates the display name server-side (min 3 chars, max 50)", async () => {

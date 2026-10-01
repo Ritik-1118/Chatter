@@ -95,10 +95,12 @@ describe("Real-time messaging (Socket.IO)", () => {
             const bobSocket = track(await server.connect(bob));
             track(await server.connect(alice)); // tab 1 stays open
             const tab2 = await server.connect(alice);
-            const update = waitFor(bobSocket, "online-users");
+            const offline = collect(bobSocket, "user-offline", 600);
             tab2.close(); // closing the most recently opened tab
-            const { onlineUsers } = await update;
-            expect(onlineUsers).to.include(alice.id);
+            expect(await offline).to.have.length(0);
+            const list = waitFor(bobSocket, "online-users");
+            bobSocket.emit("add-user");
+            expect((await list).onlineUsers).to.include(alice.id);
         });
 
         it("[B-S29] delivers messages to every open tab of the recipient", async () => {
@@ -312,14 +314,14 @@ describe("Call signalling (Socket.IO)", () => {
         await rejected;
     });
 
-    it("[B-C01] reaches the callee using the payload VideoCall.jsx actually sends (`to: videoCall.id`)", async () => {
+    it("[B-C01] reaches the callee using the payload the client builds from the open chat", async () => {
         const alice = await server.createUser("Alice");
         const bob = await server.createUser("Bob");
         const aliceSocket = track(await server.connect(alice));
         const bobSocket = track(await server.connect(bob));
-        // ChatHeader builds the call from currentChatUser, which only has `_id`.
-        const currentChatUser = { _id: bob.id, name: "Bob", profilePicture: "/avatars/2.png" };
-        const videoCall = { ...currentChatUser, type: "out-going", callType: "video", roomId: Date.now() };
+        // Mirrors ChatHeader: the call target is the open chat's partner id.
+        const currentChat = { id: "conversation-id", partnerId: bob.id, name: "Bob", profilePicture: "/avatars/2.png" };
+        const videoCall = { ...currentChat, id: currentChat.partnerId, type: "out-going", callType: "video", roomId: Date.now() };
         const ring = waitFor(bobSocket, "incoming-video-call", 1000);
         aliceSocket.emit("outgoing-video-call", {
             to: videoCall.id,

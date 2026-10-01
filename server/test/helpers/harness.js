@@ -70,7 +70,12 @@ export async function startServer({ env = {}, port } = {}) {
                 FIREBASE_CLIENT_EMAIL: "test@chatter-test.iam.gserviceaccount.com",
                 FIREBASE_PRIVATE_KEY: privateKey,
                 ZEGO_APP_ID,
-                ZEGO_SERVER_ID: ZEGO_SECRET,
+                ZEGO_SERVER_SECRET: ZEGO_SECRET,
+                MEDIA_URL_SECRET: "test-media-secret-0123456789abcdef0123",
+                LOG_LEVEL: "warn",
+                RATE_LIMIT_MAX: "100000",
+                RATE_LIMIT_UPLOAD_MAX: "100000",
+                SOCKET_EVENTS_PER_10S: "100000",
                 ...env,
             },
             stdio: ["ignore", "pipe", "pipe"],
@@ -86,11 +91,17 @@ export async function startServer({ env = {}, port } = {}) {
 
     const baseUrl = `http://127.0.0.1:${port}`;
     const deadline = Date.now() + 20000;
-    // Ready once both the HTTP listener and the Mongo connection are up.
-    while (!(logs.join("").includes("Server is running") && logs.join("").includes("Connection successful"))) {
+    // Ready once /health reports the database is up.
+    for (;;) {
         if (exited) throw new Error(`server exited early: ${JSON.stringify(exited)}\n${logs.join("")}`);
         if (Date.now() > deadline) throw new Error(`server did not start\n${logs.join("")}`);
-        await new Promise((r) => setTimeout(r, 50));
+        try {
+            const res = await fetch(`${baseUrl}/health`);
+            if (res.status === 200) break;
+        } catch {
+            /* not listening yet */
+        }
+        await new Promise((r) => setTimeout(r, 100));
     }
 
     let dbClient;
