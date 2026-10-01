@@ -11,11 +11,7 @@ const state = () => JSON.parse(fs.readFileSync(path.join(here, "..", ".build", "
 export async function api(user, method, urlPath, json) {
     const headers = { Authorization: `Bearer ${user.token}` };
     if (json !== undefined) headers["Content-Type"] = "application/json";
-    const res = await fetch(state().apiUrl + urlPath, {
-        method,
-        headers,
-        body: json === undefined ? undefined : JSON.stringify(json),
-    });
+    const res = await fetch(state().apiUrl + urlPath, { method, headers, body: json === undefined ? undefined : JSON.stringify(json) });
     const text = await res.text();
     try {
         return { status: res.status, data: JSON.parse(text) };
@@ -24,21 +20,27 @@ export async function api(user, method, urlPath, json) {
     }
 }
 
-// Creates a fully onboarded user (Firebase identity + Mongo profile).
+// Creates a fully onboarded user (Firebase identity + profile).
 // Names get a random suffix because all tests share one database.
-export async function createUser(base) {
-    const name = `${base} ${Math.random().toString(36).slice(2, 6)}`;
-    const user = makeUser(base);
+export async function createUser(baseName) {
+    const name = `${baseName} ${Math.random().toString(36).slice(2, 6)}`;
+    const user = makeUser(baseName);
     user.name = name;
     const res = await api(user, "POST", "/api/auth/onboard-user", { name, about: `${name}'s status`, image: "/avatars/2.png" });
-    if (!res.data?.user?._id) throw new Error(`onboarding ${name} failed: ${JSON.stringify(res)}`);
-    user.id = res.data.user._id;
+    if (!res.data?.user?.id) throw new Error(`onboarding ${name} failed: ${JSON.stringify(res)}`);
+    user.id = res.data.user.id;
     return user;
 }
 
 export async function sendViaApi(from, to, message) {
-    const res = await api(from, "POST", "/api/messages/add-message", { from: from.id, to: to.id, message });
+    const res = await api(from, "POST", "/api/messages/add-message", { to: to.id, message });
+    if (res.status !== 201) throw new Error(`send failed: ${JSON.stringify(res)}`);
     return res.data.message;
+}
+
+export async function createGroup(owner, name, members) {
+    const res = await api(owner, "POST", "/api/conversations", { name, participantIds: members.map((m) => m.id) });
+    return res.data.conversation;
 }
 
 export const oid = (id) => new mongoose.Types.ObjectId(id);
@@ -49,14 +51,8 @@ export async function db() {
     return conn.db;
 }
 
-const firebaseIdentity = (user) => ({
-    uid: user.uid,
-    email: user.email,
-    displayName: user.name,
-    photoURL: null,
-});
+const firebaseIdentity = (user) => ({ uid: user.uid, email: user.email, displayName: user.name, photoURL: null });
 
-// Opens a new browser context already signed in (Firebase-side) as `user`.
 async function openAs(browser, user, { localStorage: extra = {}, pending = false } = {}) {
     const context = await browser.newContext();
     await context.addInitScript(
@@ -75,7 +71,6 @@ async function openAs(browser, user, { localStorage: extra = {}, pending = false
     // Next.js catches render/effect exceptions and only logs them, so record those too.
     page.on("console", (m) => {
         const text = m.text();
-        // "Abort fetching component" is Next's notice for a superseded navigation (see B-C25).
         if (m.type() === "error" && /^(TypeError|ReferenceError|Error):/.test(text) && !/Abort fetching component/.test(text)) {
             page.errors.push(text.split("\n")[0]);
         }
@@ -97,35 +92,36 @@ export const test = base.extend({
 
 export { expect };
 
-// ---- UI helpers (selectors reflect the current markup) ----
-export const chatItem = (page, name) => page.getByRole("button", { name: `Open chat with ${name}` });
-export const chatHeader = (page) => page.locator("div.h-16", { hasText: /(online|offline)/ }).first();
+// ---- UI helpers ----
+export const chatList = (page) => page.getByRole("navigation", { name: "Chat list" });
+export const chatItem = (page, name) => page.getByRole("button", { name: `Open chat with ${name}`, exact: true });
+export const chatHeader = (page) => page.locator('header[aria-label="Chat header"]');
+export const chatStatus = (page) => page.getByTestId("chat-status");
+export const bubbles = (page) => page.getByTestId("message-text");
+// The bubble whose own text is exactly `text` (not one that merely quotes it in a reply).
+export const bubble = (page, text) => page.getByTestId("message-bubble").filter({ has: page.getByTestId("message-text").getByText(text, { exact: true }) });
+export const messageLog = (page) => page.getByRole("log", { name: "Messages" });
+export const composer = (page) => page.getByRole("textbox", { name: "Message input" });
 
 export async function openApp(page) {
     await page.goto("/");
-    await expect(page.getByRole("navigation", { name: "Chat list" })).toBeVisible();
+    await expect(chatList(page)).toBeVisible();
+    await expect(page.getByLabel("Loading chats")).toHaveCount(0);
 }
 
 export async function openChat(page, name) {
-    await chatItem(page, name).click();
+    await chatList(page).getByRole("button", { name: `Open chat with ${name}`, exact: true }).click();
     await expect(chatHeader(page)).toContainText(name);
 }
 
 export async function typeAndSend(page, text) {
-    await page.locator("#message-box").fill(text);
+    await composer(page).fill(text);
     await page.getByRole("button", { name: "Send message" }).click();
 }
 
-export const bubbles = (page) => page.locator("div.custom-scrollbar span.break-all");
-
-const iconByTitle = (page, title) => page.locator("svg", { has: page.locator("title", { hasText: title }) });
-export const newChatIcon = (page) => iconByTitle(page, "New Chat");
-export const menuIcon = (page) => iconByTitle(page, "Menu");
-
-// B-C24: a real click on these icons lands on the inner <path> and the menu closes
-// immediately. Flows that just need the menu open target the <svg> element itself.
-export async function openMenu(locator) {
-    const box = await locator.boundingBox();
-    const at = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, bubbles: true };
-    await locator.dispatchEvent("click", at);
+export async function messageAction(page, text, action) {
+    const target = bubble(page, text);
+    await target.hover();
+    await target.getByRole("button", { name: "Message actions" }).click();
+    await page.getByRole("menuitem", { name: action, exact: true }).click();
 }

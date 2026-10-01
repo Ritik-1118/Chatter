@@ -26,14 +26,19 @@ export function buildClient() {
         path.join(buildDir, "next.config.js"),
         `const path = require("path");
 const base = require("./next.config.base.js");
+const alias = {
+    "@firebase/app": "./e2e-mocks/firebase-app.js",
+    "@firebase/auth": "./e2e-mocks/firebase-auth.js",
+};
 module.exports = {
     ...base,
+    turbopack: { ...(base.turbopack || {}), root: path.resolve(__dirname, "../../.."), resolveAlias: { ...(base.turbopack?.resolveAlias || {}), ...alias } },
     webpack(config, ctx) {
         const out = base.webpack ? base.webpack(config, ctx) : config;
         out.resolve.alias = {
             ...out.resolve.alias,
-            "firebase/app$": path.resolve(__dirname, "e2e-mocks/firebase-app.js"),
-            "firebase/auth$": path.resolve(__dirname, "e2e-mocks/firebase-auth.js"),
+            "@firebase/app$": path.resolve(__dirname, alias["@firebase/app"]),
+            "@firebase/auth$": path.resolve(__dirname, alias["@firebase/auth"]),
         };
         return out;
     },
@@ -47,11 +52,7 @@ module.exports = {
             ...process.env,
             NEXT_TELEMETRY_DISABLED: "1",
             NEXT_PUBLIC_API_HOST: `http://localhost:${API_PORT}`,
-            // Server bundles externalize firebase (alias not applied); the real SDK
-            // only needs a well-formed key to initialise during prerendering.
-            NEXT_PUBLIC_FIREBASE_API_KEY: "AIzaSyE2E-dummy-key-000000000000000000",
-            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "chatter-e2e.firebaseapp.com",
-            NEXT_PUBLIC_FIREBASE_PROJECT_ID: "chatter-e2e",
+            // Deliberately no NEXT_PUBLIC_FIREBASE_* values: the build must not need them.
         },
     });
 }

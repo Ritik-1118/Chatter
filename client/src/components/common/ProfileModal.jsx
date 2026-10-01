@@ -1,45 +1,63 @@
-import React from "react";
-import { IoClose } from "react-icons/io5";
-import Avatar from "./Avatar";
-import { useTheme } from '@/context/ThemeContext';
+import { useState } from "react";
+import { reducerCases } from "@/context/constants";
 import { useStateProvider } from "@/context/StateContext";
+import { useToast } from "@/context/ToastContext";
+import { api } from "@/lib/api";
+import { toUserInfo } from "@/lib/session";
+import AvatarPicker from "./AvatarPicker";
+import Input from "./Input";
+import Modal from "./Modal";
 
-const ProfileModal = ( { user, onClose } ) => {
-  const [ { smWindows } ] = useStateProvider();
+export default function ProfileModal({ onClose }) {
+    const [{ userInfo }, dispatch] = useStateProvider();
+    const toast = useToast();
+    const [name, setName] = useState(userInfo?.name || "");
+    const [about, setAbout] = useState(userInfo?.about || "");
+    const [image, setImage] = useState(userInfo?.profilePicture);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+    if (!userInfo) return null;
 
-  const { theme } = useTheme();
-  if ( !user ) return null;
-  // console.log("user info: ", user)
-  return (
-    <div className={`fixed left-[4.5rem] bottom-[1.5rem] z-40 flex items-end justify-start pointer-events-none ${smWindows && "max-w-50"}`}>
-      <div className={ `relative flex flex-col items-center px-8 py-10 rounded-xl shadow-2xl max-w-sm w-full animate-fade-in ring-2 backdrop-blur-2xl ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider text-dark-primary-text' : 'bg-light-secondary-background border-light-divider text-light-primary-text'} border pointer-events-auto` }>
-        <button
-          className="absolute top-4 right-4 text-2xl focus:outline-none"
-          onClick={ onClose }
-          aria-label="Close profile modal"
-        >
-          <IoClose />
-        </button>
-        <Avatar type="xl" image={ user.profileImage || "/default_avatar.png" } />
-        <div className="mt-6 flex flex-col items-center gap-2 w-full">
-          <span className={ `text-2xl font-bold ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` }>{ user.name }</span>
-          <span className={ `text-base break-all ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` }>{ user.email }</span>
-          { user.status && (
-            <span className={ `mt-2 text-center text-sm px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-dark-surface text-dark-primary-text' : 'bg-light-surface text-light-primary-text'}` }>{ user.status }</span>
-          ) }
-        </div>
-      </div>
-      <style jsx global>{ `
-                @keyframes fade-in {
-                    from { opacity: 0; transform: translateY(40px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fade-in {
-                    animation: fade-in 1.2s cubic-bezier(0.4,0,0.2,1) both;
-                }
-            `}</style>
-    </div>
-  );
-};
+    const dirty = name !== userInfo.name || about !== userInfo.about || image !== userInfo.profilePicture;
+    const save = async (e) => {
+        e.preventDefault();
+        setError("");
+        if (name.trim().length < 3) return setError("Display name must be at least 3 characters.");
+        setSaving(true);
+        try {
+            const body = { name: name.trim(), about: about.trim() };
+            if (image !== userInfo.profilePicture) body.image = image;
+            const { user } = await api.updateProfile(body);
+            dispatch({ type: reducerCases.SET_USER_INFO, userInfo: toUserInfo(user) });
+            toast("Profile updated");
+            onClose();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
-export default ProfileModal; 
+    return (
+        <Modal title="Profile" onClose={onClose} closeLabel="Close profile modal">
+            <form onSubmit={save} className="flex flex-col items-center gap-4">
+                <AvatarPicker image={image} setImage={setImage} onError={setError} />
+                <p className="break-all text-sm text-light-secondary-text dark:text-dark-secondary-text">{userInfo.email}</p>
+                {error && (
+                    <p role="alert" className="w-full rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-900 dark:text-red-100">
+                        {error}
+                    </p>
+                )}
+                <Input name="Display Name" state={name} setState={setName} label required maxLength={50} />
+                <Input name="About" state={about} setState={setAbout} label maxLength={140} />
+                <button
+                    type="submit"
+                    disabled={!dirty || saving}
+                    className="w-full rounded-xl bg-light-accent py-2 font-semibold text-white disabled:opacity-50 dark:bg-dark-accent dark:text-dark-surface"
+                >
+                    {saving ? "Saving…" : "Save changes"}
+                </button>
+            </form>
+        </Modal>
+    );
+}

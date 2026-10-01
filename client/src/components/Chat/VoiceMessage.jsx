@@ -1,136 +1,67 @@
-import { useStateProvider } from "@/context/StateContext";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FaPause, FaPlay } from "react-icons/fa";
 import WaveSurfer from "wavesurfer.js";
-import { HOST } from "@/utils/ApiRoutes";
-import Avatar from "../common/Avatar";
-import { FaPlay, FaStop } from "react-icons/fa";
-import { calculateTime } from "@/utils/CalculateTime";
-import MessageStatus from "../common/MessageStatus";
-import { useTheme } from '@/context/ThemeContext';
+import { assetUrl, formatDuration } from "@/lib/media";
 
-function VoiceMessage({message}) {
+// One playback source: WaveSurfer drives (and renders) a single <audio> element.
+export default function VoiceMessage({ message }) {
+    const container = useRef(null);
+    const ws = useRef(null);
+    const [playing, setPlaying] = useState(false);
+    const [current, setCurrent] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [failed, setFailed] = useState(false);
+    const url = assetUrl(message.mediaUrl);
 
-    const [{currentChatUser,userInfo}] = useStateProvider();
-    const { theme } = useTheme();
-
-    const [audioMessage,setAudioMessage] = useState(null);
-    const [isPlaying,setIsPlaying] = useState(false);
-    const [currentPlaybackTime,setCurrentPlaybackTime] = useState(0);
-    const [totalDuration,setTotalDuration] = useState(0);
-
-    const waveformRef = useRef(null);
-    const waveform = useRef(null);
-
-    useEffect(()=>{
-        if(waveform.current===null) {
-            waveform.current = WaveSurfer.create({
-                container:waveformRef.current,
-                waveColor:"#ccc",
-                progressColor:"#4a9eff",
-                cursorColor:"#7ae3c3",
-                barWidth:2,
-                height:30,
-                responsive:true,
-            });
-            waveform.current.on("finish",()=>{
-                setIsPlaying(false);
-            });
-        }
-        return () =>{
-            waveform.current.destroy();
+    useEffect(() => {
+        if (!container.current || !url) return undefined;
+        const media = new Audio();
+        media.crossOrigin = "anonymous";
+        media.preload = "metadata";
+        media.src = url;
+        const instance = WaveSurfer.create({
+            container: container.current,
+            media,
+            height: 30,
+            barWidth: 2,
+            barGap: 1,
+            cursorWidth: 0,
+            waveColor: "#9ca3af",
+            progressColor: "#4a9eff",
+        });
+        ws.current = instance;
+        const subs = [
+            instance.on("ready", (d) => setDuration(d)),
+            instance.on("timeupdate", (t) => setCurrent(t)),
+            instance.on("play", () => setPlaying(true)),
+            instance.on("pause", () => setPlaying(false)),
+            instance.on("finish", () => setPlaying(false)),
+            instance.on("error", () => setFailed(true)),
+        ];
+        media.addEventListener("loadedmetadata", () => Number.isFinite(media.duration) && setDuration(media.duration));
+        return () => {
+            subs.forEach((off) => off());
+            instance.destroy();
+            media.removeAttribute("src");
+            ws.current = null;
         };
-    },[]);
-
-    useEffect(() => {
-        const audioURL = `${HOST}/${message.message}`;
-        const audio = new Audio(audioURL);
-        setAudioMessage(audio);
-        waveform.current.load(audioURL);
-        waveform.current.on("ready",()=>{
-            setTotalDuration(waveform.current.getDuration());
-        })
-    },[message.message]);
-
-    useEffect(() => {
-        if (audioMessage) {
-            const updatePlaybackTime = () => {
-                setCurrentPlaybackTime(audioMessage.currentTime);
-            }
-            audioMessage.addEventListener("timeupdate", updatePlaybackTime);
-            return () => {
-            audioMessage.removeEventListener("timeupdate", updatePlaybackTime);
-            };
-        }
-    }, [audioMessage]);
-    const handlePlayAudio = () =>{
-        if (audioMessage){
-            waveform.current.stop();
-            waveform.current.play();
-            audioMessage.play();
-            setIsPlaying(true);
-        }
-    };
-    const handlePauseAudio = () =>{
-        waveform.current.stop();
-        if (audioMessage) {
-            audioMessage.pause();
-        }
-        setIsPlaying(false);
-    };
-
-    const formatTime = (time) => {
-        if(isNaN(time)) return "00:00";
-        const minutes = Math.floor(time / 60);
-        const seconds = Math.floor(time % 60);
-        return `${minutes.toString().padStart(2,"0")}:${seconds.toString().padStart(2,"0")}`;
-    };
+    }, [url]);
 
     return (
-        <div className={`flex items-center gap-3 py-2 px-3 rounded-lg w-fit
-            ${message.sender === currentChatUser._id 
-                ? (theme === 'dark' ? 'bg-dark-bubble-receiver text-dark-primary-text' : 'bg-light-bubble-receiver text-light-primary-text')
-                : (theme === 'dark' ? 'bg-dark-bubble-sender text-dark-primary-text' : 'bg-light-bubble-sender text-light-primary-text')}`
-        }>
-        <div className="flex items-center">
-            <div className="left-0">
-                {message.sender === userInfo.id ? (
-                    <Avatar type="lg" image={userInfo?.profileImage} />
-                ) : (
-                    <Avatar type="lg" image={currentChatUser?.profilePicture} />
-                )}
+        <div className="flex min-w-[220px] items-center gap-3 pr-6">
+            <button
+                type="button"
+                onClick={() => ws.current?.playPause()}
+                disabled={failed}
+                aria-label={playing ? "Pause voice message" : "Play voice message"}
+                className="rounded-full p-2 text-lg hover:bg-black/5 disabled:opacity-40 dark:hover:bg-white/10"
+            >
+                {playing ? <FaPause aria-hidden="true" /> : <FaPlay aria-hidden="true" />}
+            </button>
+            <div className="flex flex-1 flex-col">
+                <div ref={container} className="w-full" />
+                <span className="text-xs opacity-70">{failed ? "Audio unavailable" : formatDuration(playing || current ? current : duration)}</span>
             </div>
-            
-            <div className="ml-3 flex flex-col flex-1">
-                <div className="flex flex-row-reverse">
-                    <div className="text-lg items-center pl-4 mt-2">
-                        {!isPlaying ? (
-                            <FaPlay onClick={handlePlayAudio} />
-                        ) : (
-                            <FaStop onClick={handlePauseAudio} />
-                        )}
-                    </div>
-                    <div className="rounded-lg items-center mb-1 w-full">
-                        <div className="w-16" ref={waveformRef} />
-                    </div>
-                </div>
-                <div className="flex items-center text-sm">
-                    <span className={`mr-2 ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}`}>
-                        {formatTime(isPlaying ? currentPlaybackTime : totalDuration)}
-                    </span>
-                    <div className={`flex items-center text-xs ml-1 ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}`}>
-                            <div>{calculateTime(message.createdAt)}</div>
-                            <div>
-                                {message.sender === userInfo.id && (
-                                    <MessageStatus messageStatus={message.messageStatus} />
-                                )}
-                            </div>
-                    </div>
-                </div>
-            </div>
-    </div>
-</div>
-);
-
+        </div>
+    );
 }
-
-export default VoiceMessage;

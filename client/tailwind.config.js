@@ -1,71 +1,56 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     content: ["./src/**/*.{js,jsx,ts,tsx}"],
+    darkMode: "class",
     theme: {
         extend: {
-        backgroundImage: {
-            "chat-background": "url('/chat-bg.png')",
-        },
-        colors: {
-          // Light theme
-          // Main app background
-          'light-background': '#FAFAFA',
-          // Cards or chat area
-          'light-secondary-background': '#FFFFFF',
-          // Inputs or message bubbles
-          'light-surface': '#F1F1F1',
-          // Main text
-          'light-primary-text': '#1C1C1E',
-          // Subtext / timestamps
-          'light-secondary-text': '#6E6E73',
-          // Primary buttons / links
-          'light-accent': '#007AFF',
-          // Errors / alerts
-          'light-error': '#D32F2F',
-          // Success indicators
-          'light-success': '#388E3C',
-          // Outgoing chat bubble
-          'light-bubble-sender': '#DCF8C6',
-          // Incoming chat bubble
-          'light-bubble-receiver': '#FFFFFF',
-          // Hyperlinks
-          'light-link': '#0066CC',
-          // Borders / dividers
-          'light-divider': '#DADADA',
-          // Scrollbar styling
-          'light-scrollbar': '#DADADA',
-          // Dark theme
-          
-          // Main app background
-          'dark-background': '#121212',
-          // Cards or chat area
-          'dark-secondary-background': '#1E1E1E',
-          // Inputs or message bubbles
-          'dark-surface': '#2C2C2E',
-          // Main text
-          'dark-primary-text': '#FFFFFF',
-          // Subtext / timestamps
-          'dark-secondary-text': '#B0B0B0',
-          // Primary buttons / links
-          'dark-accent': '#4FC3F7',
-          // Errors / alerts
-          'dark-error': '#EF5350',
-          // Success indicators
-          'dark-success': '#66BB6A',
-          // Outgoing chat bubble
-          'dark-bubble-sender': '#1F3B4D',
-          // Incoming chat bubble
-          'dark-bubble-receiver': '#2C2C2E',
-          // Hyperlinks
-          'dark-link': '#90CAF9',
-          // Borders / dividers
-          'dark-divider': '#444444',
-          // Scrollbar styling
-          'dark-scrollbar': '#444444',
-        },
-        gridTemplateColumns: {
-            main: "1fr 2.4fr",
-        },
+            backgroundImage: {
+                "chat-background": "url('/chat-bg.png')",
+            },
+            colors: {
+                // Light theme
+                "light-background": "#FAFAFA",
+                "light-secondary-background": "#FFFFFF",
+                "light-surface": "#F1F1F1",
+                "light-primary-text": "#1C1C1E",
+                "light-secondary-text": "#6E6E73",
+                "light-accent": "#007AFF",
+                "light-error": "#D32F2F",
+                "light-success": "#388E3C",
+                "light-bubble-sender": "#DCF8C6",
+                "light-bubble-receiver": "#FFFFFF",
+                "light-link": "#0066CC",
+                "light-divider": "#DADADA",
+                "light-scrollbar": "#DADADA",
+                // Dark theme
+                "dark-background": "#121212",
+                "dark-secondary-background": "#1E1E1E",
+                "dark-surface": "#2C2C2E",
+                "dark-primary-text": "#FFFFFF",
+                "dark-secondary-text": "#B0B0B0",
+                "dark-accent": "#4FC3F7",
+                "dark-error": "#EF5350",
+                "dark-success": "#66BB6A",
+                "dark-bubble-sender": "#1F3B4D",
+                "dark-bubble-receiver": "#2C2C2E",
+                "dark-link": "#90CAF9",
+                "dark-divider": "#444444",
+                "dark-scrollbar": "#444444",
+                // Shared
+                ack: "#34B7F1", // read receipts
+                unread: "#25D366", // unread badge / call accept
+            },
+            gridTemplateColumns: {
+                main: "1fr 2.4fr",
+            },
+            keyframes: {
+                "fade-in": { from: { opacity: 0, transform: "translateY(16px)" }, to: { opacity: 1, transform: "translateY(0)" } },
+                gradient: { "0%, 100%": { backgroundPosition: "0% 50%" }, "50%": { backgroundPosition: "100% 50%" } },
+            },
+            animation: {
+                "fade-in": "fade-in 0.4s cubic-bezier(0.4,0,0.2,1) both",
+                gradient: "gradient 12s ease-in-out infinite",
+            },
         },
     },
     plugins: [],

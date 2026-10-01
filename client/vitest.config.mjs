@@ -8,5 +8,6 @@ export default defineConfig({
     test: {
         include: ["test/**/*.test.{js,mjs}"],
         environment: "node",
+        setupFiles: [],
     },
 });

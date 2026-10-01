@@ -1,36 +1,28 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect } from "react";
+import { createPersistentStore, usePersistentStore } from "@/lib/persistentStore";
 
-const ThemeContext = createContext();
+const KEY = "theme";
+const ThemeContext = createContext({ theme: "dark", toggleTheme: () => {}, setTheme: () => {} });
 
-export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState("dark");
+const systemTheme = () => (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
 
-  // useEffect(() => {
-  //   const savedTheme = typeof window !== "undefined" && localStorage.getItem("theme");
-  //   if (savedTheme) {
-  //     setTheme(savedTheme);
-  //     document.documentElement.classList.toggle("dark", savedTheme === "dark");
-  //   } else {
-  //     const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  //     setTheme(prefersDark ? "dark" : "light");
-  //     document.documentElement.classList.toggle("dark", prefersDark);
-  //   }
-  // }, []);
+const themeStore = createPersistentStore(KEY, "dark", {
+    parse: (raw) => raw,
+    serialize: (v) => v,
+    migrate: (v) => (v === "light" || v === "dark" ? v : systemTheme()),
+});
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    // if (typeof window !== "undefined") {
-    //   localStorage.setItem("theme", newTheme);
-    //   document.documentElement.classList.toggle("dark", newTheme === "dark");
-    // }
-  };
+// Runs before React hydrates (see _document) to avoid a flash of the wrong theme.
+export const themeBootScript = `try{var t=localStorage.getItem("${KEY}");if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.classList.toggle("dark",t==="dark")}catch(e){document.documentElement.classList.add("dark")}`;
 
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-};
+export function ThemeProvider({ children }) {
+    const theme = usePersistentStore(themeStore);
+    useEffect(() => {
+        document.documentElement.classList.toggle("dark", theme === "dark");
+    }, [theme]);
+    const setTheme = useCallback((next) => themeStore.set(next), []);
+    const toggleTheme = useCallback(() => themeStore.set((t) => (t === "dark" ? "light" : "dark")), []);
+    return <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>{children}</ThemeContext.Provider>;
+}
 
 export const useTheme = () => useContext(ThemeContext);

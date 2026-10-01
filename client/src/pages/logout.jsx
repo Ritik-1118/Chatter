@@ -1,26 +1,20 @@
-import { useStateProvider } from "@/context/StateContext";
-import { reducerCases } from "@/context/constants";
-import { firebaseAuth } from "@/utils/FirebaseConfig";
-import { signOut } from "firebase/auth";
 import { useRouter } from "next/router";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import { useStateProvider } from "@/context/StateContext";
+import { endSession } from "@/lib/session";
 
-function logout () {
+// Safe to open directly (bookmark / refresh): it never assumes a live socket.
+export default function Logout() {
+    const [, dispatch] = useStateProvider();
+    const router = useRouter();
 
-  const [ { socket, userInfo }, dispatch ] = useStateProvider();
-  const router = useRouter();
-  useEffect( () => {
-    socket.current.emit( "signout", userInfo.id )
-    dispatch( { type: reducerCases.SET_USER_INFO, userInfo: undefined } );
-    signOut( firebaseAuth );
-    router.push( "/login" )
-  }, [ socket ] )
+    useEffect(() => {
+        endSession(dispatch).finally(() => router.replace("/login"));
+    }, [dispatch, router]);
 
-  return (
-    <div className=" bg-conversation-panel-background">
-
-    </div>
-  )
+    return (
+        <main className="flex min-h-screen items-center justify-center bg-light-background text-light-secondary-text dark:bg-dark-background dark:text-dark-secondary-text">
+            <p role="status">Signing out…</p>
+        </main>
+    );
 }
-
-export default logout;

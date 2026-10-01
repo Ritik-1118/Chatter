@@ -1,177 +1,96 @@
-import React, { useEffect, useState } from "react";
-import { IoClose } from "react-icons/io5";
-import { useTheme } from '@/context/ThemeContext';
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { useSettings } from "@/context/SettingsContext";
+import { useStateProvider } from "@/context/StateContext";
+import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
+import { api } from "@/lib/api";
+import { notificationsSupported } from "@/lib/notifications";
+import { endSession } from "@/lib/session";
+import Modal from "./Modal";
+import Toggle from "./Toggle";
 
-const SettingModal = ({ onClose }) => {
-  const { theme, toggleTheme } = useTheme();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [cameraGranted, setCameraGranted] = useState(false);
-  const [microphoneGranted, setMicrophoneGranted] = useState(false);
-  const [enterToSend, setEnterToSend] = useState(false);
+function usePermission(name) {
+    const [state, setState] = useState("unknown");
+    useEffect(() => {
+        let status;
+        navigator.permissions
+            ?.query({ name })
+            .then((s) => {
+                status = s;
+                setState(s.state);
+                s.onchange = () => setState(s.state);
+            })
+            .catch(() => {});
+        return () => {
+            if (status) status.onchange = null;
+        };
+    }, [name]);
+    return state;
+}
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationsEnabled(Notification.permission === 'granted');
-    }
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: 'camera' }).then((result) => {
-        setCameraGranted(result.state === 'granted');
-        result.onchange = () => setCameraGranted(result.state === 'granted');
-      }).catch(() => {});
-      navigator.permissions.query({ name: 'microphone' }).then((result) => {
-        setMicrophoneGranted(result.state === 'granted');
-        result.onchange = () => setMicrophoneGranted(result.state === 'granted');
-      }).catch(() => {});
-    }
-    const saved = localStorage.getItem('enterToSend');
-    if (saved !== null) setEnterToSend(saved === 'true');
-  }, []);
+const PERMISSION_TEXT = { granted: "Allowed", denied: "Blocked in browser settings", prompt: "Will ask when needed", unknown: "Will ask when needed" };
 
-  const handleNotificationToggle = async () => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
-        setNotificationsEnabled(permission === 'granted');
-      } else if (Notification.permission === 'granted') {
-        setNotificationsEnabled(false);
-      } else {
-        setNotificationsEnabled(false);
-      }
-    }
-  };
+export default function SettingModal({ onClose }) {
+    const { settings, updateSettings } = useSettings();
+    const { theme, setTheme } = useTheme();
+    const [, dispatch] = useStateProvider();
+    const toast = useToast();
+    const router = useRouter();
+    const camera = usePermission("camera");
+    const microphone = usePermission("microphone");
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const handleCameraToggle = async () => {
-    if (!cameraGranted) {
-      try {
-        await navigator.mediaDevices.getUserMedia({ video: true });
-        setCameraGranted(true);
-      } catch {
-        setCameraGranted(false);
-      }
-    }
-  };
+    const toggleNotifications = async (on) => {
+        if (!on) return updateSettings({ notifications: false });
+        if (!notificationsSupported()) return toast("This browser doesn't support notifications", { type: "error" });
+        const permission = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
+        if (permission !== "granted") return toast("Notifications are blocked in your browser settings", { type: "error" });
+        updateSettings({ notifications: true });
+    };
 
-  const handleMicrophoneToggle = async () => {
-    if (!microphoneGranted) {
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        setMicrophoneGranted(true);
-      } catch {
-        setMicrophoneGranted(false);
-      }
-    }
-  };
-
-  const handleEnterToSendToggle = () => {
-    const newValue = !enterToSend;
-    setEnterToSend(newValue);
-    localStorage.setItem('enterToSend', newValue);
-    if (typeof onEnterToSendChange === 'function') {
-      onEnterToSendChange(newValue);
-    }
-  };
-
-  return (
-    <div className="fixed left-[4.5rem] bottom-[1.5rem] z-50 flex items-end justify-start pointer-events-none">
-      <div className={`relative flex flex-col items-start px-8 py-8 rounded-xl shadow-2xl max-w-sm w-full animate-fade-in ring-2 backdrop-blur-2xl ${theme === 'dark' ? 'bg-dark-secondary-background border-dark-divider text-dark-primary-text' : 'bg-light-secondary-background border-light-divider text-light-primary-text'} border pointer-events-auto`}>
-        <button
-          className="absolute top-4 right-4 text-2xl focus:outline-none"
-          onClick={onClose}
-          aria-label="Close settings modal"
-        >
-          <IoClose />
-        </button>
-        <h2 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}`}>Settings</h2>
-        <div className="flex flex-col gap-4 w-full">
-          {/* Notifications Toggle */}
-          <div className="flex gap-2 items-center justify-between w-full">
-            <span>Notifications</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={notificationsEnabled}
-                onChange={handleNotificationToggle}
-              />
-              <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${notificationsEnabled ? 'bg-green-500' : 'bg-gray-300'} peer-focus:outline-none`}></div>
-              <div className={`absolute left-0 top-0 h-6 w-11 pointer-events-none`}>
-                <span className={`absolute top-1/2 left-1 transition-transform duration-200 transform -translate-y-1/2 bg-white w-5 h-5 rounded-full shadow ${notificationsEnabled ? 'translate-x-5' : ''}`}></span>
-              </div>
-            </label>
-          </div>
-          {/* Dark Mode Toggle */}
-          <div className="flex gap-4 items-center justify-between w-full">
-            <span>Dark Mode</span>
-            <button
-              onClick={toggleTheme}
-              className={`px-3 py-1 rounded-lg font-semibold shadow transition-all duration-200 ${theme === 'dark' ? 'bg-dark-accent text-dark-surface' : 'bg-light-accent text-light-surface'}`}
-            >
-              {theme === 'dark' ? 'Disable' : 'Enable'}
-            </button>
-          </div>
-          {/* Camera Permission Toggle */}
-          <div className="flex gap-2 items-center justify-between w-full">
-            <span>Camera</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={cameraGranted}
-                onChange={handleCameraToggle}
-                disabled={cameraGranted}
-              />
-              <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${cameraGranted ? 'bg-green-500' : 'bg-gray-300'} peer-focus:outline-none`}></div>
-              <div className={`absolute left-0 top-0 h-6 w-11 pointer-events-none`}>
-                <span className={`absolute top-1/2 left-1 transition-transform duration-200 transform -translate-y-1/2 bg-white w-5 h-5 rounded-full shadow ${cameraGranted ? 'translate-x-5' : ''}`}></span>
-              </div>
-            </label>
-          </div>
-          {/* Microphone Permission Toggle */}
-          <div className="flex gap-2 items-center justify-between w-full">
-            <span>Microphone</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={microphoneGranted}
-                onChange={handleMicrophoneToggle}
-                disabled={microphoneGranted}
-              />
-              <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${microphoneGranted ? 'bg-green-500' : 'bg-gray-300'} peer-focus:outline-none`}></div>
-              <div className={`absolute left-0 top-0 h-6 w-11 pointer-events-none`}>
-                <span className={`absolute top-1/2 left-1 transition-transform duration-200 transform -translate-y-1/2 bg-white w-5 h-5 rounded-full shadow ${microphoneGranted ? 'translate-x-5' : ''}`}></span>
-              </div>
-            </label>
-          </div>
-          {/* Enter to Send Toggle */}
-          <div className="flex gap-4 items-center justify-between w-full">
-            <span>Send on Enter</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={enterToSend}
-                onChange={handleEnterToSendToggle}
-              />
-              <div className={`w-11 h-6 rounded-full transition-colors duration-200 ${enterToSend ? 'bg-green-500' : 'bg-gray-300'} peer-focus:outline-none`}></div>
-              <div className={`absolute left-0 top-0 h-6 w-11 pointer-events-none`}>
-                <span className={`absolute top-1/2 left-1 transition-transform duration-200 transform -translate-y-1/2 bg-white w-5 h-5 rounded-full shadow ${enterToSend ? 'translate-x-5' : ''}`}></span>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-      <style jsx global>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(40px); }
-          to { opacity: 1; transform: translateY(0); }
+    const deleteAccount = async () => {
+        try {
+            await api.deleteAccount();
+            await endSession(dispatch);
+            router.replace("/login");
+        } catch (err) {
+            toast(err.message, { type: "error" });
         }
-        .animate-fade-in {
-          animation: fade-in 1.2s cubic-bezier(0.4,0,0.2,1) both;
-        }
-      `}</style>
-    </div>
-  );
-};
+    };
 
-export default SettingModal; 
+    return (
+        <Modal title="Settings" onClose={onClose} closeLabel="Close settings modal">
+            <div className="flex flex-col gap-5">
+                <Toggle label="Dark mode" checked={theme === "dark"} onChange={(on) => setTheme(on ? "dark" : "light")} />
+                <Toggle label="Notifications" description="Show alerts for new messages and calls while Chatter is in the background" checked={settings.notifications} onChange={toggleNotifications} />
+                <Toggle label="Sounds" description="Ringtone for incoming calls" checked={settings.sounds} onChange={(on) => updateSettings({ sounds: on })} />
+                <Toggle label="Send on Enter" description="Shift+Enter adds a new line. Ctrl/⌘+Enter always sends." checked={settings.enterToSend} onChange={(on) => updateSettings({ enterToSend: on })} />
+                <dl className="grid grid-cols-2 gap-y-1 text-sm">
+                    <dt>Camera</dt>
+                    <dd className="text-right text-light-secondary-text dark:text-dark-secondary-text">{PERMISSION_TEXT[camera]}</dd>
+                    <dt>Microphone</dt>
+                    <dd className="text-right text-light-secondary-text dark:text-dark-secondary-text">{PERMISSION_TEXT[microphone]}</dd>
+                </dl>
+                <hr className="border-light-divider dark:border-dark-divider" />
+                {confirmDelete ? (
+                    <div className="flex flex-col gap-2 text-sm">
+                        <p role="alert">This permanently removes your profile and you will be signed out. Your past messages will show as from “Deleted user”.</p>
+                        <div className="flex gap-2">
+                            <button type="button" className="flex-1 rounded-lg border border-light-divider py-2 dark:border-dark-divider" onClick={() => setConfirmDelete(false)}>
+                                Cancel
+                            </button>
+                            <button type="button" className="flex-1 rounded-lg bg-light-error py-2 font-semibold text-white dark:bg-dark-error" onClick={deleteAccount}>
+                                Delete my account
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <button type="button" className="text-left text-sm text-light-error dark:text-dark-error" onClick={() => setConfirmDelete(true)}>
+                        Delete account…
+                    </button>
+                )}
+            </div>
+        </Modal>
+    );
+}

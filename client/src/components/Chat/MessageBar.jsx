@@ -1,269 +1,264 @@
-import { useStateProvider } from "@/context/StateContext";
-import { reducerCases } from "@/context/constants";
-import { ADD_IMAGE_MESSAGE_ROUTE, ADD_MESSAGE_ROUTE } from "@/utils/ApiRoutes";
-import axios from "axios";
-import EmojiPicker from "emoji-picker-react";
-import React, { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BsEmojiSmile } from "react-icons/bs";
 import { FaMicrophone } from "react-icons/fa";
 import { ImAttachment } from "react-icons/im";
+import { IoClose } from "react-icons/io5";
 import { MdSend } from "react-icons/md";
-import PhotoPicker from "../common/PhotoPicker";
-import dynamic from "next/dynamic";
-const CaptureAudio = dynamic( () => import( "../common/CaptureAudio" ), {
-  ssr: false,
-} );
-import { useTheme } from '@/context/ThemeContext';
-import { setAxiosAuthToken } from "@/utils/authHeaders";
+import { reducerCases } from "@/context/constants";
+import { useSettings } from "@/context/SettingsContext";
+import { useStateProvider } from "@/context/StateContext";
+import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
+import { api } from "@/lib/api";
+import { IMAGE_TYPES, LIMITS } from "@/lib/media";
+import { sendOutgoing } from "@/lib/outbox";
+import { emit } from "@/lib/socket";
+import ContextMenu from "../common/ContextMenu";
+import IconButton from "../common/IconButton";
 
-function MessageBar () {
-  const [ { userInfo, currentChatUser, socket, userContacts }, dispatch ] = useStateProvider();
-  const [ message, setMessage ] = useState( "" );
-  const [ showEmojiPicker, setShowEmojiPicker ] = useState( false );
-  const emojiPickerRef = useRef( null );
-  const [ grabPhoto, setGrabPhoto ] = useState( false );
-  const [ showAudioRecorder, setShowAudioRecorder ] = useState( false );
-  const { theme } = useTheme();
-  const [enterToSend, setEnterToSend] = useState(false);
-  const textareaRef = useRef(null);
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
+const CaptureAudio = dynamic(() => import("./CaptureAudio"), { ssr: false });
 
-  useEffect(() => {
-    const saved = localStorage.getItem('enterToSend');
-    if (saved !== null) setEnterToSend(saved === 'true');
-  }, []);
+const MAX_LENGTH = 4000;
+const TYPING_INTERVAL_MS = 3000;
 
-  const handleInputKeyDown = (e) => {
-    if (enterToSend && e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (message.trim().length > 0) {
-        sendMessage();
-      }
+export default function MessageBar({ chat }) {
+    const [{ userInfo, replyTo, editing }, dispatch] = useStateProvider();
+    const { settings } = useSettings();
+    const { theme } = useTheme();
+    const toast = useToast();
+    const [message, setMessage] = useState("");
+    const [emojiOpen, setEmojiOpen] = useState(false);
+    const [attachOpen, setAttachOpen] = useState(false);
+    const [recording, setRecording] = useState(false);
+    const textarea = useRef(null);
+    const attachButton = useRef(null);
+    const emojiPanel = useRef(null);
+    const imageInput = useRef(null);
+    const fileInput = useRef(null);
+    const sending = useRef(false);
+    const typingSentAt = useRef(0);
+    const stopTimer = useRef(null);
+    const reply = replyTo[chat.id];
+    const edit = editing[chat.id];
+    const me = userInfo?.id;
+    const target = chat.isGroup ? { conversationId: chat.id } : { conversationId: chat.id, to: chat.partnerId };
+
+    const stopTyping = useCallback(() => {
+        clearTimeout(stopTimer.current);
+        if (typingSentAt.current) emit("stop-typing", target);
+        typingSentAt.current = 0;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chat.id]);
+
+    // Remounted per chat (keyed by chat id), so this runs once per conversation.
+    useEffect(() => {
+        textarea.current?.focus();
+        return stopTyping;
+    }, [stopTyping]);
+
+    // Starting an edit loads the message into the input.
+    const [editShown, setEditShown] = useState(edit);
+    if (edit !== editShown) {
+        setEditShown(edit);
+        if (edit) setMessage(edit.message);
     }
-  };
+    useEffect(() => {
+        if (edit) textarea.current?.focus();
+    }, [edit]);
 
-  const emitSafe = (event, payload) => {
-    if (socket?.current?.emitSafe) socket.current.emitSafe(event, payload);
-    else if (socket?.current) socket.current.emit(event, payload);
-  };
+    useEffect(() => {
+        if (!emojiOpen) return undefined;
+        const close = (e) => !emojiPanel.current?.contains(e.target) && setEmojiOpen(false);
+        document.addEventListener("mousedown", close);
+        return () => document.removeEventListener("mousedown", close);
+    }, [emojiOpen]);
 
-  const PhotoPickerChange = async ( e ) => {
-    try {
-      const file = e.target.files[ 0 ];
-      const formData = new FormData();
-      formData.append( "image", file );
-      await setAxiosAuthToken();
-      const response = await axios.post( ADD_IMAGE_MESSAGE_ROUTE, formData, {
-        headers: {
-          "Content-Type": "Multipart/form-data",
-        },
-        params: {
-          from: userInfo.id,
-          to: currentChatUser._id,
-        },
-      } );
-      if ( response.status === 201 ) {
-        const chatId = currentChatUser?._id;
-        const messagePayload = { ...response.data.message, messageStatus: "sent" };
-        emitSafe( "send-msg", {
-          to: chatId,
-          from: userInfo?.id,
-          message: messagePayload,
-        } );
-        dispatch( {
-          type: reducerCases.UPSERT_MESSAGE,
-          chatId,
-          message: messagePayload,
-        } );
-      }
-    } catch ( error ) {
-      console.log( error );
-    }
-  };
+    useEffect(() => {
+        const el = textarea.current;
+        if (!el) return;
+        el.style.height = "40px";
+        el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    }, [message]);
 
-  useEffect( () => {
-    const handleOutsideClick = ( event ) => {
-      if ( event.target.id !== "emoji-open" ) {
-        if ( emojiPickerRef.current && !emojiPickerRef.current.contains( event.target ) ) {
-          setShowEmojiPicker( false );
+    const onChange = (e) => {
+        setMessage(e.target.value);
+        const now = Date.now();
+        if (now - typingSentAt.current > TYPING_INTERVAL_MS) {
+            emit("typing", target);
+            typingSentAt.current = now;
         }
-      }
-    };
-    document.addEventListener( "click", handleOutsideClick );
-    return () => {
-      document.removeEventListener( "click", handleOutsideClick );
-    };
-  }, [] );
-
-  const handleEmojiModel = () => {
-    setShowEmojiPicker( !showEmojiPicker );
-  };
-
-  const handleEmojiClick = ( emoji ) => {
-    setMessage( ( prevMessage ) => ( prevMessage += emoji.emoji ) );
-  };
-
-  const sendMessage = async () => {
-    const chatId = currentChatUser?._id;
-    if (!chatId || !message.trim()) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const optimistic = {
-      _id: tempId,
-      tempId,
-      sender: userInfo?.id,
-      receiver: chatId,
-      message,
-      type: "text",
-      createdAt: new Date().toISOString(),
-      messageStatus: "pending",
+        clearTimeout(stopTimer.current);
+        stopTimer.current = setTimeout(stopTyping, 4000);
     };
 
-    dispatch({
-      type: reducerCases.UPSERT_MESSAGE,
-      chatId,
-      message: optimistic,
-    });
+    const onError = (err) => toast(err.message, { type: "error" });
 
-    try {
-      await setAxiosAuthToken();
-      const { data } = await axios.post( ADD_MESSAGE_ROUTE, {
-        to: chatId,
-        from: userInfo?.id,
-        message,
-      } );
+    const submit = async () => {
+        const text = message.trim();
+        if (!text || sending.current) return;
+        if (text.length > MAX_LENGTH) return toast(`Messages can be at most ${MAX_LENGTH} characters`, { type: "error" });
+        sending.current = true;
+        stopTyping();
+        try {
+            if (edit) {
+                const { message: updated } = await api.editMessage(edit._id, text);
+                dispatch({ type: reducerCases.UPDATE_MESSAGE, message: updated });
+                dispatch({ type: reducerCases.SET_EDITING, chatId: chat.id, message: null });
+                setMessage("");
+                return;
+            }
+            // Clear immediately so a second Enter press cannot resend the same text.
+            setMessage("");
+            dispatch({ type: reducerCases.SET_REPLY, chatId: chat.id, message: null });
+            sending.current = false;
+            await sendOutgoing(dispatch, { chatId: chat.id, me, payload: { kind: "text", text, replyTo: reply }, onError });
+        } catch (err) {
+            onError(err);
+        } finally {
+            sending.current = false;
+        }
+    };
 
-      const confirmed = { ...data.message, messageStatus: "sent" };
-      dispatch({
-        type: reducerCases.UPSERT_MESSAGE,
-        chatId,
-        tempId,
-        message: confirmed,
-      });
+    const onKeyDown = (e) => {
+        if (e.key === "Escape" && (reply || edit)) {
+            dispatch({ type: edit ? reducerCases.SET_EDITING : reducerCases.SET_REPLY, chatId: chat.id, message: null });
+            if (edit) setMessage("");
+            return;
+        }
+        if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+        if (e.ctrlKey || e.metaKey || (settings.enterToSend && !e.shiftKey)) {
+            e.preventDefault();
+            submit();
+        }
+    };
 
-      emitSafe( "send-msg", {
-        to: chatId,
-        from: userInfo?.id,
-        message: confirmed,
-        tempId,
-      } );
+    const sendFile = (kind) => (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        if (kind === "image" && !IMAGE_TYPES.includes(file.type)) return toast("Please choose a PNG, JPEG, WebP or GIF image", { type: "error" });
+        if (file.size > LIMITS[kind]) return toast(`That file is too large (max ${LIMITS[kind] / 1024 / 1024} MB)`, { type: "error" });
+        dispatch({ type: reducerCases.SET_REPLY, chatId: chat.id, message: null });
+        sendOutgoing(dispatch, { chatId: chat.id, me, payload: { kind, file, replyTo: reply }, onError });
+    };
 
-      // --- NEW: Add to chat list if not present ---
-      const alreadyInContacts = userContacts.some(
-        ( c ) => c._id === currentChatUser._id || c.id === currentChatUser._id
-      );
-      if ( !alreadyInContacts ) {
-        dispatch( {
-          type: reducerCases.SET_USER_CONTACTS,
-          userContacts: [
-            {
-              ...currentChatUser,
-              lastMessage: message,
-              // add any other fields you want to show in the chat list
-            },
-            ...userContacts,
-          ],
-        } );
-      }
-      // --- END NEW ---
-
-      setMessage( "" );
-      if (textareaRef.current) {
-        textareaRef.current.style.height = '40px';
-      }
-    } catch ( error ) {
-      console.log( error )
-      dispatch({
-        type: reducerCases.UPSERT_MESSAGE,
-        chatId,
-        tempId,
-        message: { ...optimistic, messageStatus: "failed" },
-      });
+    if (chat.blocked) {
+        return (
+            <div className="flex items-center justify-center gap-3 bg-light-secondary-background p-4 text-sm text-light-secondary-text dark:bg-dark-secondary-background dark:text-dark-secondary-text">
+                You blocked this contact.
+                <button
+                    type="button"
+                    className="font-semibold text-light-accent dark:text-dark-accent"
+                    onClick={async () => {
+                        try {
+                            await api.unblock(chat.partnerId);
+                            dispatch({ type: reducerCases.SET_BLOCKED, userId: chat.partnerId, blocked: false });
+                        } catch (err) {
+                            onError(err);
+                        }
+                    }}
+                >
+                    Unblock
+                </button>
+            </div>
+        );
     }
-  };
 
-  useEffect( () => {
-    if ( grabPhoto ) {
-      const data = document.getElementById( "photo-picker" );
-      data.click();
-      document.body.onfocus = ( e ) => {
-        setTimeout( () => {
-          setGrabPhoto( false )
-        }, 1000 );
-      }
+    if (recording) {
+        return (
+            <div className="bg-light-secondary-background px-4 py-3 dark:bg-dark-secondary-background">
+                <CaptureAudio
+                    onClose={() => setRecording(false)}
+                    onSend={(file) => sendOutgoing(dispatch, { chatId: chat.id, me, payload: { kind: "audio", file, replyTo: reply }, onError })}
+                />
+            </div>
+        );
     }
-  }, [ grabPhoto ] );
 
-  return (
-    <div className={ `h-20 px-4 flex items-center gap-6 relative ${theme === 'dark' ? 'bg-dark-secondary-background' : 'bg-light-secondary-background'}` }>
-      { !showAudioRecorder && (
-        <form className="flex items-center gap-6 w-full" onSubmit={(e) => { e.preventDefault(); sendMessage(); }}>
-          <div className=" flex gap-3" aria-label="Message tools">
-            <button
-              type="button"
-              id="emoji-open"
-              aria-label="Insert emoji"
-              aria-expanded={showEmojiPicker}
-              onClick={ handleEmojiModel }
-              className={`p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'focus-visible:outline-dark-accent' : 'focus-visible:outline-light-accent'}`}
-            >
-              <BsEmojiSmile className={ `text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } />
-            </button>
-            { showEmojiPicker && <div className=" absolute bottom-24 left-12 z-40" ref={ emojiPickerRef }><EmojiPicker onEmojiClick={ handleEmojiClick } theme={ theme } /></div> }
-            <button
-              type="button"
-              aria-label="Attach a photo"
-              onClick={ () => setGrabPhoto( true ) }
-              className={`p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${theme === 'dark' ? 'focus-visible:outline-dark-accent' : 'focus-visible:outline-light-accent'}`}
-            >
-              <ImAttachment className={ `text-xl ${theme === 'dark' ? 'text-dark-secondary-text' : 'text-light-secondary-text'}` } />
-            </button>
-          </div>
-          <div className=" w-full rounded-lg h-10 flex items-center">
-            <label htmlFor="message-box" className="sr-only">Type a message</label>
-            <textarea
-              id="message-box"
-              ref={textareaRef}
-              placeholder="Type a message"
-              className={`text-sm focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 rounded-lg px-5 py-2 w-full resize-none ${theme === 'dark' ? 'bg-dark-surface text-dark-primary-text focus-visible:outline-dark-accent' : 'bg-light-surface text-light-primary-text focus-visible:outline-light-accent'}`}
-              style={{ minHeight: '40px', maxHeight: '120px', lineHeight: '1.5', overflowY: 'hidden', boxSizing: 'border-box' }}
-              onChange={ ( e ) => {
-                setMessage( e.target.value );
-                e.target.style.height = '40px';
-                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-              } }
-              value={ message }
-              onKeyDown={handleInputKeyDown}
-              rows={1}
-              aria-label="Message input"
-            />
-          </div>
-          <div className=" flex w-10 items-center justify-center">
-            { message?.length ? (
-              <button
-                type="submit"
-                aria-label="Send message"
-                className="p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                <MdSend className={ `text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` } />
-              </button>
-            ) : (
-              <button
-                type="button"
-                aria-label="Record audio message"
-                onClick={ () => setShowAudioRecorder( true ) }
-                className="p-2 rounded-full focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                <FaMicrophone className={ `text-xl ${theme === 'dark' ? 'text-dark-accent' : 'text-light-accent'}` } />
-              </button>
+    const banner = edit ? { title: "Editing message", text: edit.message } : reply ? { title: reply.sender === me ? "Replying to yourself" : "Replying", text: reply.message || reply.file?.name || "Attachment" } : null;
+    return (
+        <div className="relative bg-light-secondary-background dark:bg-dark-secondary-background">
+            {banner && (
+                <div className="mx-4 mt-2 flex items-start justify-between gap-2 rounded-md border-l-4 border-light-accent bg-light-surface px-3 py-2 text-sm dark:border-dark-accent dark:bg-dark-surface">
+                    <span className="min-w-0">
+                        <span className="block text-xs font-semibold text-light-accent dark:text-dark-accent">{banner.title}</span>
+                        <span className="line-clamp-1 text-light-secondary-text dark:text-dark-secondary-text">{banner.text}</span>
+                    </span>
+                    <IconButton
+                        label={edit ? "Cancel editing" : "Cancel reply"}
+                        className="!p-1 text-base"
+                        onClick={() => {
+                            dispatch({ type: edit ? reducerCases.SET_EDITING : reducerCases.SET_REPLY, chatId: chat.id, message: null });
+                            if (edit) setMessage("");
+                        }}
+                    >
+                        <IoClose aria-hidden="true" />
+                    </IconButton>
+                </div>
             )}
-          </div>
-        </form>
-      ) }
-      { grabPhoto && <PhotoPicker onChange={ PhotoPickerChange } /> }
-      { showAudioRecorder && <CaptureAudio hide={ setShowAudioRecorder } /> }
-
-    </div>
-  )
+            <form
+                className="flex items-end gap-2 px-2 py-3 sm:gap-3 sm:px-4"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    submit();
+                }}
+            >
+                <div className="flex shrink-0 text-light-secondary-text dark:text-dark-secondary-text">
+                    <IconButton label="Insert emoji" aria-expanded={emojiOpen} onClick={() => setEmojiOpen((v) => !v)}>
+                        <BsEmojiSmile aria-hidden="true" />
+                    </IconButton>
+                    {!edit && (
+                        <IconButton ref={attachButton} label="Attach" aria-haspopup="menu" aria-expanded={attachOpen} onClick={() => setAttachOpen((v) => !v)}>
+                            <ImAttachment aria-hidden="true" />
+                        </IconButton>
+                    )}
+                </div>
+                {emojiOpen && (
+                    <div ref={emojiPanel} className="absolute bottom-20 left-2 z-40">
+                        <EmojiPicker theme={theme} onEmojiClick={(emoji) => setMessage((m) => m + emoji.emoji)} lazyLoadEmojis />
+                    </div>
+                )}
+                {attachOpen && (
+                    <ContextMenu
+                        label="Attach"
+                        anchorRef={attachButton}
+                        align="left"
+                        onClose={() => setAttachOpen(false)}
+                        options={[
+                            { name: "Photo", callback: () => imageInput.current?.click() },
+                            { name: "Document", callback: () => fileInput.current?.click() },
+                        ]}
+                    />
+                )}
+                <input ref={imageInput} type="file" accept={IMAGE_TYPES.join(",")} hidden onChange={sendFile("image")} data-testid="image-input" />
+                <input ref={fileInput} type="file" hidden onChange={sendFile("file")} data-testid="file-input" />
+                <textarea
+                    id="message-box"
+                    ref={textarea}
+                    rows={1}
+                    value={message}
+                    onChange={onChange}
+                    onKeyDown={onKeyDown}
+                    onBlur={stopTyping}
+                    maxLength={MAX_LENGTH}
+                    placeholder="Type a message"
+                    aria-label="Message input"
+                    className="max-h-[120px] min-h-[40px] w-full resize-none rounded-lg bg-light-surface px-4 py-2 text-sm leading-6 text-light-primary-text focus:outline-none focus-visible:ring-2 focus-visible:ring-light-accent dark:bg-dark-surface dark:text-dark-primary-text dark:focus-visible:ring-dark-accent"
+                />
+                <div className="shrink-0 text-light-accent dark:text-dark-accent">
+                    {message.trim() || edit ? (
+                        <IconButton type="submit" label={edit ? "Save edit" : "Send message"}>
+                            <MdSend aria-hidden="true" />
+                        </IconButton>
+                    ) : (
+                        <IconButton label="Record audio message" onClick={() => setRecording(true)}>
+                            <FaMicrophone aria-hidden="true" />
+                        </IconButton>
+                    )}
+                </div>
+            </form>
+        </div>
+    );
 }
-
-export default MessageBar;
